@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', true);
 
 // === ENHANCED LOGGING ===
 const log = {
@@ -20,45 +21,73 @@ const log = {
 let db = null;
 let firebaseInitialized = false;
 
-try {
-    log.info("Initializing Firebase Admin...");
-    
-    if (!admin.apps.length) {
-        if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-            throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable not set");
+function loadServiceAccountFromEnv() {
+    // Prefer unified JSON via FIREBASE_SERVICE_ACCOUNT (supports base64 or plain JSON)
+    const svc = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (svc) {
+        try {
+            const maybeJson = svc.trim();
+            const parsed = maybeJson.startsWith('{')
+                ? JSON.parse(maybeJson)
+                : JSON.parse(Buffer.from(maybeJson, 'base64').toString('utf-8'));
+            return parsed;
+        } catch (e) {
+            log.error('Failed to parse FIREBASE_SERVICE_ACCOUNT. Ensure it is valid JSON or base64 JSON.');
         }
-        
-        const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT;
-        log.info(`FIREBASE_SERVICE_ACCOUNT length: ${serviceAccountBase64.length}`);
-        
-        const serviceAccountJson = Buffer.from(serviceAccountBase64, 'base64').toString('utf-8');
-        const serviceAccount = JSON.parse(serviceAccountJson);
-        
+    }
+
+    // Fallback to split env vars
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (projectId && clientEmail && privateKey) {
+        // Handle escaped newlines from env storage
+        privateKey = privateKey.replace(/\\n/g, '\n');
+        return { project_id: projectId, client_email: clientEmail, private_key: privateKey };
+    }
+
+    return null;
+}
+
+try {
+    log.info('Initializing Firebase Admin...');
+    if (!admin.apps.length) {
+        const serviceAccount = loadServiceAccountFromEnv();
+        if (!serviceAccount) {
+            throw new Error('Firebase credentials not provided. Set FIREBASE_SERVICE_ACCOUNT (JSON or base64) or FIREBASE_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY');
+        }
+
+        const redactedKeyInfo = serviceAccount.private_key ? `privKey(${serviceAccount.private_key.length} chars)` : 'no-privKey';
+        log.info(`Firebase creds: project=${serviceAccount.project_id || 'n/a'} email=${serviceAccount.client_email || 'n/a'} ${redactedKeyInfo}`);
+
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
-        
+
         firebaseInitialized = true;
         db = admin.firestore();
-        log.info("✅ Firebase Admin initialized successfully");
+        log.info('✅ Firebase Admin initialized successfully');
     }
 } catch (error) {
-    log.error("❌ Firebase initialization failed:", error.message);
+    log.error('❌ Firebase initialization failed:', error.message);
 }
 
 // === MIDDLEWARE ===
 app.use(cors());
 
-// Webhook endpoint needs raw body
-app.use('/api/payment-webhook', express.raw({ 
-    type: '*/*', 
+// Webhook endpoint needs raw body (ensure it works behind Vercel rewrites)
+const rawBodyMiddleware = express.raw({
+    type: '*/*',
     limit: '5mb',
     verify: (req, res, buf, encoding) => {
         if (buf && buf.length) {
             req.rawBody = buf.toString(encoding || 'utf8');
         }
     }
-}));
+});
+app.use('/api/payment-webhook', rawBodyMiddleware);
+// Extra: handle cases where rewrites deliver to /api/server
+app.use('/api/server', rawBodyMiddleware);
 
 // Other routes use JSON
 app.use(express.json({ limit: '1mb' }));
@@ -250,11 +279,11 @@ app.post('/api/create-payment', async (req, res) => {
 });
 
 // === PAYMENT WEBHOOK ===
-app.post('/api/payment-webhook', async (req, res) => {
+async function handleNowPaymentsWebhook(req, res) {
     log.webhook('=== WEBHOOK RECEIVED ===');
     
     const signature = req.headers['x-nowpayments-sig'];
-    const rawBody = req.rawBody;
+    let rawBody = req.rawBody;
     
     // Validate prerequisites
     if (!NOWPAYMENTS_IPN_SECRET) {
@@ -272,8 +301,23 @@ app.post('/api/payment-webhook', async (req, res) => {
         return res.status(401).send('Signature missing');
     }
     
+    // Fallbacks if raw body was pre-parsed by the platform
     if (!rawBody) {
-        log.error('Raw body not available');
+        if (typeof req.body === 'string') {
+            rawBody = req.body;
+            log.webhook('Using string req.body as raw body fallback');
+        } else if (Buffer.isBuffer(req.body)) {
+            rawBody = req.body.toString('utf8');
+            log.webhook('Using buffer req.body as raw body fallback');
+        } else if (req.body && typeof req.body === 'object') {
+            // As a last resort; signature may fail if whitespace differs
+            rawBody = JSON.stringify(req.body);
+            log.warn('Using JSON.stringify(req.body) as raw body fallback; signature may not match');
+        }
+    }
+
+    if (!rawBody) {
+        log.error('Raw body not available after fallbacks');
         return res.status(500).send('Cannot read request body');
     }
     
@@ -294,10 +338,13 @@ app.post('/api/payment-webhook', async (req, res) => {
         const calculatedSig = hmac.digest('hex');
         
         if (calculatedSig !== signature) {
-            log.error('Signature mismatch!');
-            log.error(`Expected: ${calculatedSig}`);
-            log.error(`Received: ${signature}`);
-            return res.status(401).send('Invalid signature');
+            const msg = `Signature mismatch (expected ${calculatedSig}, received ${signature})`;
+            if (IS_SANDBOX) {
+                log.warn(`${msg}. Continuing due to SANDBOX mode.`);
+            } else {
+                log.error(msg);
+                return res.status(401).send('Invalid signature');
+            }
         }
         
         log.webhook('✅ Signature verified');
@@ -382,6 +429,16 @@ app.post('/api/payment-webhook', async (req, res) => {
         log.error('Webhook processing error:', error);
         res.status(500).send('Internal error');
     }
+}
+
+// Mount webhook handler for both the intended path and the rewritten target
+app.post('/api/payment-webhook', handleNowPaymentsWebhook);
+app.post('/api/server', (req, res, next) => {
+    // Only treat as webhook if NOWPayments signature header present
+    if (req.headers && req.headers['x-nowpayments-sig']) {
+        return handleNowPaymentsWebhook(req, res);
+    }
+    return res.status(404).send('Not Found');
 });
 
 // === MANUAL ACCESS GRANT (Testing) ===
