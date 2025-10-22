@@ -1,4 +1,5 @@
 const express = require('express');
+const serverless = require('serverless-http');
 const cors = require('cors');
 const fetch = require('node-fetch'); // Ensure v2 for CommonJS
 const admin = require('firebase-admin');
@@ -47,6 +48,22 @@ app.use(cors());
 const rawBodySaver = (req, res, buf, encoding) => { if (buf && buf.length) { req.rawBody = buf.toString(encoding || 'utf8'); } };
 app.use('/api/payment-webhook', express.raw({ verify: rawBodySaver, type: '*/*', limit: '5mb' }));
 app.use(express.json({ limit: '1mb' })); // JSON parser for other routes
+
+// --- Environment Variable Check ---
+const requiredEnvVars = [
+    'FIREBASE_SERVICE_ACCOUNT',
+    'GOOGLE_API_KEY',
+    'SHEET_ID',
+    'NOWPAYMENTS_API_KEY',
+    'NOWPAYMENTS_IPN_SECRET'
+];
+const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingEnvVars.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missingEnvVars.join(', ')}`);
+} else {
+    console.log("All required environment variables are present.");
+}
+// --- End Environment Variable Check ---
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const SHEET_ID = process.env.SHEET_ID;
@@ -328,6 +345,6 @@ if (require.main === module) {
     });
 }
 
-// Vercel export MUST be the last line
-module.exports = app;
+// Netlify handler
+module.exports.handler = serverless(app);
 
