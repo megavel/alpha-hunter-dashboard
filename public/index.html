@@ -42,9 +42,6 @@
         Disconnect
       </button>
     </div>
-    <button id="top-connect-wallet-btn" class="hidden sm:inline-flex px-3 py-1.5 bg-positive-green text-dark-bg text-sm font-semibold rounded-full shadow-lg hover:bg-positive-green/80 transition">
-      Connect Wallet
-    </button>
   </div>
 
   <div id="landing-page" class="animate-fade-in">
@@ -187,7 +184,6 @@
     const purchaseBtn = document.getElementById('purchase-btn');
     const proceedBtn = document.getElementById('proceed-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
-    const topConnectWalletBtn = document.getElementById('top-connect-wallet-btn');
     const walletChipDiv = document.getElementById('wallet-chip');
 
     let currentWalletAddress = null;
@@ -196,7 +192,6 @@
     // Ensure modal exists before adding listeners
     if (modal && connectWalletBtn && purchaseBtn && disconnectBtn) {
         connectWalletBtn.addEventListener('click', () => modal.open());
-        if (topConnectWalletBtn) topConnectWalletBtn.addEventListener('click', () => modal.open());
         purchaseBtn.addEventListener('click', onPurchase);
         disconnectBtn.addEventListener('click', () => modal.disconnect());
 
@@ -228,7 +223,6 @@
       currentWalletAddress = address.toLowerCase(); // Use lowercase for consistency
       walletAddressEl.textContent = shortenAddress(address);
       connectWalletBtn.classList.add('hidden');
-      if (topConnectWalletBtn) topConnectWalletBtn.classList.add('hidden');
       connectedStateDiv.classList.remove('hidden');
       disconnectBtn.classList.remove('hidden');
       if (walletChipDiv) walletChipDiv.classList.remove('hidden');
@@ -246,7 +240,6 @@
       currentWalletAddress = null;
       walletAddressEl.textContent = '';
       connectWalletBtn.classList.remove('hidden');
-      if (topConnectWalletBtn) topConnectWalletBtn.classList.remove('hidden');
       connectedStateDiv.classList.add('hidden');
       purchaseBtn.classList.add('hidden');
       proceedBtn.classList.add('hidden');
