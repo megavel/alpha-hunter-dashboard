@@ -105,6 +105,8 @@ const IS_SANDBOX = process.env.NOWPAYMENTS_SANDBOX === 'true';
 const NOWPAYMENTS_BASE_URL = IS_SANDBOX 
     ? 'https://api-sandbox.nowpayments.io/v1' 
     : 'https://api.nowpayments.io/v1';
+// Public canonical base URL for building callbacks/redirects (e.g. https://alpha-hunter-dashboard.vercel.app)
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
 
 log.info(`NOWPayments Mode: ${IS_SANDBOX ? 'SANDBOX' : 'LIVE'}`);
 log.info(`Firebase Ready: ${firebaseInitialized}`);
@@ -226,18 +228,21 @@ app.post('/api/create-payment', async (req, res) => {
     const paymentCurrency = process.env.PAYMENT_CURRENCY || 'usd';
     
     try {
-        // Determine callback URL
-        const host = process.env.VERCEL_URL || 
-                     req.headers['x-forwarded-host'] || 
-                     req.headers.host || 
-                     `localhost:${process.env.PORT || 3000}`;
-        
-        const protocol = host.includes('localhost') ? 'http' : 'https';
-        const ipnCallbackUrl = `${protocol}://${host}/api/payment-webhook`;
-        const successUrl = `${protocol}://${host}/?payment=success`;
-        const cancelUrl = `${protocol}://${host}/?payment=failed`;
+        // Determine canonical base URL for callbacks/redirects
+        let baseUrl = PUBLIC_BASE_URL;
+        if (!baseUrl) {
+            const forwardedProto = req.headers['x-forwarded-proto'];
+            const hostHeader = req.headers['x-forwarded-host'] || req.headers.host || `localhost:${process.env.PORT || 3000}`;
+            const proto = forwardedProto || (hostHeader.includes('localhost') ? 'http' : 'https');
+            baseUrl = `${proto}://${hostHeader}`;
+        }
+
+        const ipnCallbackUrl = `${baseUrl}/api/payment-webhook`;
+        const successUrl = `${baseUrl}/?payment=success`;
+        const cancelUrl = `${baseUrl}/?payment=failed`;
         
         log.info(`Creating payment for ${walletAddress.toLowerCase()}`);
+        log.info(`Base URL: ${baseUrl}`);
         log.info(`IPN Callback: ${ipnCallbackUrl}`);
         
         const response = await fetch(`${NOWPAYMENTS_BASE_URL}/invoice`, {
