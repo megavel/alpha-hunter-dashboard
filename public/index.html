@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpha Hunter by Los Banditos - Home</title>
+  <!-- Tailwind via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom font: Plus Jakarta Sans */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Animation for fade-in effect */
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fade-in 0.5s ease-out forwards;
+    }
+  </style>
+  <script>
+    // Custom Tailwind Configuration
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'dark-bg': '#0A0A0A',
+            'card-bg': '#1A1A1A',
+            'border-subtle': '#2A2A2A',
+            'positive-green': '#20C997',
+            'primary-text': '#E0E0E0',
+            'secondary-text': '#888888',
+          },
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark-bg text-primary-text min-h-screen p-4 sm:p-8">
+
+  <!-- Landing Page Section -->
+  <div id="landing-page" class="animate-fade-in">
+    <div class="max-w-4xl mx-auto text-center py-16 sm:py-24 px-4">
+      <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">
+        Uncover Alpha on the Blockchain.
+      </h1>
+      <p class="mt-6 max-w-2xl mx-auto text-lg text-secondary-text">
+        Our dashboard provides real-time insights into the top-performing wallets and DEXes on Solana and BSC. Stop guessing, start tracking the smart money.
+      </p>
+      <a href="dashboard.html" class="inline-block mt-10 px-8 py-4 bg-positive-green text-dark-bg font-bold text-lg rounded-lg shadow-lg hover:bg-positive-green/80 transform hover:-translate-y-1 transition-all duration-300">
+        Get Started With Hunting
+      </a>
+    </div>
+
+    <!-- Features Section -->
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 px-4 text-center">
+      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+        <h3 class="text-xl font-bold text-white mb-2">Multi-Chain Tracking</h3>
+        <p class="text-secondary-text">Monitor top wallets and DEX activity across both Solana and BSC ecosystems from a single interface.</p>
+      </div>
+      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        <h3 class="text-xl font-bold text-white mb-2">Real-Time Data</h3>
+        <p class="text-secondary-text">Access up-to-date information directly from the blockchain to make timely and informed decisions.</p>
+      </div>
+      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+        <h3 class="text-xl font-bold text-white mb-2">Powerful Filtering</h3>
+        <p class="text-secondary-text">Sort, search, and filter through thousands of wallets to find the exact data you need, and export it with one click.</p>
+      </div>
+    </div>
+
+    <!-- Footer for Landing Page -->
+    <footer class="mt-20 text-center text-secondary-text text-sm">
+      <p>Built with ❤️ by Stilldasmainaemon</p>
+      <p class="mt-1">Copyright &copy; 2025</p>
+    </footer>
+  </div>
+
+</body>
+</html>
+
+
