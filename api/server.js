@@ -105,7 +105,7 @@ const IS_SANDBOX = process.env.NOWPAYMENTS_SANDBOX === 'true';
 const NOWPAYMENTS_BASE_URL = IS_SANDBOX 
     ? 'https://api-sandbox.nowpayments.io/v1' 
     : 'https://api.nowpayments.io/v1';
-// Public canonical base URL for building callbacks/redirects (e.g. https://alpha-hunter-dashboard.vercel.app)
+// Public canonical base URL for building callbacks/redirects
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
 
 log.info(`NOWPayments Mode: ${IS_SANDBOX ? 'SANDBOX' : 'LIVE'}`);
