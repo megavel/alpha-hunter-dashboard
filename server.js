@@ -1,24 +1,20 @@
-// server.js - Backend server to securely fetch Google Sheets data
-// Install dependencies: npm install express cors dotenv node-fetch
-
+// server.js - Vercel-compatible backend
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Serve your HTML file from 'public' folder
 
 // SECURE: Store credentials in environment variables
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 const SHEET_ID = process.env.SHEET_ID;
 
-// Cache to improve performance (optional)
+// Cache to improve performance
 let cachedData = {};
 let lastFetchTime = {};
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -95,15 +91,6 @@ app.post('/api/sheets/clear-cache', (req, res) => {
     res.json({ message: 'Cache cleared successfully' });
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`API endpoint: http://localhost:${PORT}/api/sheets/data?sheet=<sheet_name>`);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    process.exit(0);
-});
+// Export the app handler for Vercel
+module.exports = app;
 
