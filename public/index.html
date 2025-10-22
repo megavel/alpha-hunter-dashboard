@@ -3,36 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alpha Hunter by Los Banditos - Home</title>
-  <!-- Tailwind via CDN -->
+  <title>Alpha Hunter by Los Banditos</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- No external script tag needed here, loaded via module -->
+
   <style>
-    /* Custom font: Plus Jakarta Sans */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-    /* Animation for fade-in effect */
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
     @keyframes fade-in {
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .animate-fade-in {
-      animation: fade-in 0.5s ease-out forwards;
-    }
+    .hidden { display: none; }
   </style>
   <script>
-    // Custom Tailwind Configuration
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            'dark-bg': '#0A0A0A',
-            'card-bg': '#1A1A1A',
-            'border-subtle': '#2A2A2A',
-            'positive-green': '#20C997',
-            'primary-text': '#E0E0E0',
-            'secondary-text': '#888888',
+            'dark-bg': '#0A0A0A', 'card-bg': '#1A1A1A', 'border-subtle': '#2A2A2A',
+            'positive-green': '#20C997', 'primary-text': '#E0E0E0', 'secondary-text': '#888888',
           },
         }
       }
@@ -41,7 +33,6 @@
 </head>
 <body class="bg-dark-bg text-primary-text min-h-screen p-4 sm:p-8">
 
-  <!-- Landing Page Section -->
   <div id="landing-page" class="animate-fade-in">
     <div class="max-w-4xl mx-auto text-center py-16 sm:py-24 px-4">
       <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight">
@@ -50,38 +41,339 @@
       <p class="mt-6 max-w-2xl mx-auto text-lg text-secondary-text">
         Our dashboard provides real-time insights into the top-performing wallets and DEXes on Solana and BSC. Stop guessing, start tracking the smart money.
       </p>
-      <a href="dashboard.html" class="inline-block mt-10 px-8 py-4 bg-positive-green text-dark-bg font-bold text-lg rounded-lg shadow-lg hover:bg-positive-green/80 transform hover:-translate-y-1 transition-all duration-300">
-        Get Started With Hunting :)
-      </a>
+
+      <div id="connection-section" class="mt-10">
+        <!-- Payment status messages -->
+        <div id="payment-success-msg" class="hidden mb-4 p-4 text-lg bg-positive-green/20 text-positive-green rounded-lg">
+          ✅ Payment successful! You now have permanent access.
+        </div>
+        <div id="payment-failed-msg" class="hidden mb-4 p-4 text-lg bg-red-500/20 text-red-400 rounded-lg">
+          ❌ Payment failed or was cancelled. Please try again.
+        </div>
+
+        <button id="connect-wallet-btn" class="px-8 py-4 bg-positive-green text-dark-bg font-bold text-lg rounded-lg shadow-lg hover:bg-positive-green/80 transform hover:-translate-y-1 transition-all duration-300">
+          Connect Wallet to Get Started
+        </button>
+
+        <div id="connected-state" class="hidden">
+          <div class="bg-card-bg border border-border-subtle p-4 rounded-lg inline-block">
+            <p class="text-secondary-text">Wallet Connected:</p>
+            <p id="wallet-address" class="text-primary-text font-mono text-lg"></p>
+          </div>
+
+          <!-- Purchase button -->
+          <button id="purchase-btn" class="hidden mt-6 px-8 py-4 bg-yellow-500 text-dark-bg font-bold text-lg rounded-lg shadow-lg hover:bg-yellow-400 transform hover:-translate-y-1 transition-all duration-300">
+            Purchase Access (10 USD)
+          </button>
+
+          <!-- Proceed button -->
+          <button id="proceed-btn" onclick="goToDashboard()" class="hidden mt-6 px-8 py-4 bg-positive-green text-dark-bg font-bold text-lg rounded-lg shadow-lg hover:bg-positive-green/80 transform hover:-translate-y-1 transition-all duration-300">
+            Proceed to Dashboard →
+          </button>
+
+          <!-- Disconnect button -->
+          <button id="disconnect-btn" class="hidden mt-4 px-4 py-2 bg-border-subtle text-primary-text text-sm font-semibold rounded-lg hover:bg-secondary-text/30 transition duration-200">
+            Disconnect Wallet
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Features Section -->
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 px-4 text-center">
-      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
-        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-        <h3 class="text-xl font-bold text-white mb-2">Multi-Chain Tracking</h3>
-        <p class="text-secondary-text">Monitor top wallets and DEX activity across both Solana and BSC ecosystems from a single interface.</p>
-      </div>
-      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
-        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-        <h3 class="text-xl font-bold text-white mb-2">Real-Time Data</h3>
-        <p class="text-secondary-text">Access up-to-date information directly from the blockchain to make timely and informed decisions.</p>
-      </div>
-      <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
-        <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-        <h3 class="text-xl font-bold text-white mb-2">Powerful Filtering</h3>
-        <p class="text-secondary-text">Sort, search, and filter through thousands of wallets to find the exact data you need, and export it with one click.</p>
-      </div>
+        <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+            <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+            <h3 class="text-xl font-bold text-white mb-2">Multi-Chain Tracking</h3>
+            <p class="text-secondary-text">Monitor top wallets and DEX activity across both Solana and BSC ecosystems from a single interface.</p>
+        </div>
+        <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+            <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            <h3 class="text-xl font-bold text-white mb-2">Real-Time Data</h3>
+            <p class="text-secondary-text">Access up-to-date information directly from the blockchain to make timely and informed decisions.</p>
+        </div>
+        <div class="bg-card-bg p-6 rounded-lg border border-border-subtle">
+            <svg class="w-10 h-10 mx-auto mb-4 text-positive-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+            <h3 class="text-xl font-bold text-white mb-2">Powerful Filtering</h3>
+            <p class="text-secondary-text">Sort, search, and filter through thousands of wallets to find the exact data you need, and export it with one click.</p>
+        </div>
     </div>
 
-    <!-- Footer for Landing Page -->
     <footer class="mt-20 text-center text-secondary-text text-sm">
       <p>Built with ❤️ by Stilldasmainaemon</p>
       <p class="mt-1">Copyright &copy; 2025</p>
     </footer>
   </div>
 
+  <script type="module">
+    // FIX: Import from esm.sh CDN
+    import { createWeb3Modal, defaultConfig } from 'https://esm.sh/@web3modal/ethers@4.1.11';
+
+    // *** 1. Get Project ID (REPLACE) ***
+    const projectId = '97312f4e47e631bfd3ac56cca7f2720f';
+
+    // *** 2. Set chains (Add BSC mainnet) ***
+    const mainnet = {
+      chainId: 1,
+      name: 'Ethereum',
+      currency: 'ETH',
+      explorerUrl: 'https://etherscan.io',
+      rpcUrl: 'https://cloudflare-eth.com'
+    };
+    const bsc = {
+      chainId: 56,
+      name: 'BNB Smart Chain',
+      currency: 'BNB',
+      explorerUrl: 'https://bscscan.com',
+      rpcUrl: 'https://bsc-dataseed.binance.org/'
+    };
+    // Add other chains like Polygon (137) if needed
+
+    // *** 3. Create modal ***
+    const metadata = {
+      name: 'Alpha Hunter',
+      description: 'Alpha Hunter Dashboard Access',
+      url: window.location.href, // Dynamically set based on deployment
+      icons: ['https://alpha-hunter-dashboard.vercel.app/favicon.ico'] // Optional: Add your icon URL
+    };
+
+    // Check if projectId is still the placeholder
+     if (projectId === '97312f4e47e631bfd3ac56cca7f2720f') {
+        console.error("WalletConnect Project ID is not set. Please replace 'PASTE_YOUR_PROJECT_ID_HERE' in the code.");
+        // Optionally display a message to the user on the page itself
+        // document.getElementById('connection-section').innerHTML = '<p class="text-red-500">Wallet connection is not configured correctly.</p>';
+     }
+
+    let modal;
+    try {
+        const ethersConfig = defaultConfig({
+            metadata,
+            enableEIP6963: true,
+            enableInjected: true,
+            enableCoinbase: true,
+            rpcUrl: 'https://cloudflare-eth.com',
+            defaultChainId: 1,
+        });
+
+        modal = createWeb3Modal({
+          ethersConfig,
+          chains: [mainnet, bsc],
+          projectId,
+          enableAnalytics: false,
+          themeMode: 'dark',
+          themeVariables: {
+            '--w3m-z-index': 9999,
+            '--w3m-accent': '#20C997',
+          }
+        });
+        console.log("Web3Modal Initialized successfully.");
+    } catch (error) {
+        console.error("Failed to initialize Web3Modal:", error);
+         // Display error to user if initialization fails
+         const connectSection = document.getElementById('connection-section');
+         if (connectSection) {
+             connectSection.innerHTML = '<p class="text-red-500">Error initializing wallet connection. Please refresh the page or try again later.</p>';
+         }
+    }
+
+
+    // --- DOM Elements ---
+    const connectWalletBtn = document.getElementById('connect-wallet-btn');
+    const connectedStateDiv = document.getElementById('connected-state');
+    const walletAddressEl = document.getElementById('wallet-address');
+    const purchaseBtn = document.getElementById('purchase-btn');
+    const proceedBtn = document.getElementById('proceed-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+
+    let currentWalletAddress = null;
+
+    // --- Event Listeners ---
+    // Ensure modal exists before adding listeners
+    if (modal && connectWalletBtn && purchaseBtn && disconnectBtn) {
+        connectWalletBtn.addEventListener('click', () => modal.open());
+        purchaseBtn.addEventListener('click', onPurchase);
+        disconnectBtn.addEventListener('click', () => modal.disconnect());
+
+        // --- Subscribe to modal state changes ---
+        const unsubscribe = modal.subscribeProvider(async ({ provider, providerType, address, chainId, isConnected }) => {
+            console.log("Provider State Change:", { isConnected, address, chainId });
+            if (isConnected && address) {
+                await handleConnectSuccess(address);
+            } else if (!isConnected && currentWalletAddress) {
+                handleDisconnectUIReset();
+            }
+        });
+    } else {
+        console.error("Could not find necessary DOM elements or modal was not initialized.");
+         // Optionally hide the connect button if things failed early
+         if (connectWalletBtn) connectWalletBtn.classList.add('hidden');
+    }
+
+
+    // --- Functions ---
+
+    function shortenAddress(address, chars = 6) {
+      if (!address) return "";
+      return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
+    }
+
+    async function handleConnectSuccess(address) {
+      if (!address || !connectWalletBtn || !connectedStateDiv || !disconnectBtn || !walletAddressEl) return; // Guard against null elements
+      currentWalletAddress = address.toLowerCase(); // Use lowercase for consistency
+      walletAddressEl.textContent = shortenAddress(address);
+      connectWalletBtn.classList.add('hidden');
+      connectedStateDiv.classList.remove('hidden');
+      disconnectBtn.classList.remove('hidden');
+
+      // ** Store connected address for dashboard guard **
+      sessionStorage.setItem('connectedWalletAddress', currentWalletAddress);
+
+
+      // Check if wallet has access
+      await checkWalletAccess(address);
+    }
+
+    function handleDisconnectUIReset() {
+       if (!connectWalletBtn || !connectedStateDiv || !purchaseBtn || !proceedBtn || !disconnectBtn || !walletAddressEl) return; // Guard against null elements
+      currentWalletAddress = null;
+      walletAddressEl.textContent = '';
+      connectWalletBtn.classList.remove('hidden');
+      connectedStateDiv.classList.add('hidden');
+      purchaseBtn.classList.add('hidden');
+      proceedBtn.classList.add('hidden');
+      disconnectBtn.classList.add('hidden');
+
+      // ** Clear stored address on disconnect **
+      sessionStorage.removeItem('connectedWalletAddress');
+
+      console.log("Wallet disconnected (UI reset)");
+    }
+
+
+    async function checkWalletAccess(wallet) {
+      if (!wallet || !purchaseBtn || !proceedBtn) return; // Guard against null elements
+      console.log(`Checking access for: ${wallet}`);
+      try {
+        purchaseBtn.classList.add('hidden'); // Hide buttons while checking
+        proceedBtn.classList.add('hidden');
+
+        const response = await fetch(`/api/check-access?wallet=${wallet}`);
+        if (!response.ok) {
+          throw new Error(`Server error checking access: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log(`Access check result for ${wallet}:`, data);
+
+        if (data.hasAccess) {
+          purchaseBtn.classList.add('hidden');
+          proceedBtn.classList.remove('hidden');
+        } else {
+          purchaseBtn.classList.remove('hidden');
+          proceedBtn.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Error checking wallet access:', error);
+        alert('Error checking access status. Please try connecting again.');
+        handleDisconnectUIReset(); // Reset UI on error
+      }
+    }
+
+    async function onPurchase() {
+      if (!currentWalletAddress || !purchaseBtn) {
+        alert('Please connect your wallet first.');
+        return;
+      }
+      console.log(`Purchase initiated for: ${currentWalletAddress}`);
+
+      try {
+        purchaseBtn.disabled = true;
+        purchaseBtn.textContent = 'Creating Invoice...';
+
+        const response = await fetch('/api/create-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ walletAddress: currentWalletAddress })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to create payment invoice.';
+          if (data && data.error) errorMessage = data.error;
+          if (data && data.message) errorMessage += ` Details: ${data.message}`;
+          console.error("Create payment API error:", errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        if (!data.invoice_url) {
+          console.error("API success but no invoice_url returned:", data);
+          throw new Error("Payment processor did not return an invoice URL.");
+        }
+
+        console.log("Redirecting to NOWPayments:", data.invoice_url);
+        // Redirect to payment page
+        window.location.href = data.invoice_url;
+
+      } catch (error) {
+        console.error('Error creating payment:', error);
+        alert(`Error: ${error.message}`);
+        purchaseBtn.disabled = false; // Re-enable button on error
+        purchaseBtn.textContent = 'Purchase Access (10 USD)';
+      }
+    }
+
+     // Make goToDashboard globally accessible
+     window.goToDashboard = function() {
+        if (!currentWalletAddress) {
+            alert("Wallet not connected.");
+            return;
+        }
+        // sessionStorage should already be set in handleConnectSuccess
+        console.log("Proceeding to dashboard for:", currentWalletAddress);
+        window.location.href = 'dashboard.html';
+    }
+
+
+    function checkPaymentStatus() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment');
+      const successMsg = document.getElementById('payment-success-msg');
+      const failedMsg = document.getElementById('payment-failed-msg');
+
+
+      if (paymentStatus === 'success' && successMsg) {
+        console.log("Payment success status detected in URL.");
+        successMsg.classList.remove('hidden');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (paymentStatus === 'failed' && failedMsg) {
+        console.log("Payment failed status detected in URL.");
+        failedMsg.classList.remove('hidden');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    // Initial check in case page is loaded with wallet already connected
+    async function checkInitialConnection() {
+        // Only run if modal was initialized successfully
+        if (!modal) return;
+
+        // Small delay to allow modal state hydration from storage
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        const initialAddress = modal.getAddress();
+        if (initialAddress) {
+            console.log("Wallet already connected on load:", initialAddress);
+            await handleConnectSuccess(initialAddress);
+        } else {
+            console.log("No initial wallet connection found.");
+            handleDisconnectUIReset(); // Ensure UI is in disconnected state
+        }
+         // Check payment status from URL regardless of connection state
+         checkPaymentStatus();
+    }
+
+     // Run initial check
+     checkInitialConnection();
+
+  </script>
 </body>
 </html>
-
-

@@ -3,169 +3,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Alpha Hunter Dashboard</title>
-  <!-- Tailwind via CDN -->
+
+  <!-- IMMEDIATE REDIRECT GUARD - ENHANCED WITH PROMISE -->
+  <script>
+    // Create a global promise that the main script can wait for
+    window.accessVerificationPromise = new Promise(async (resolve, reject) => {
+      const connectedWallet = sessionStorage.getItem('connectedWalletAddress');
+      let hasAccess = false; // Assume no access initially
+
+      if (!connectedWallet) {
+        console.log('Guard: No wallet found. Redirecting.');
+        window.location.href = '/?error=not_connected';
+        reject('not_connected'); // Reject the promise
+        return;
+      }
+
+      console.log('Guard: Wallet found:', connectedWallet);
+
+      try {
+        const response = await fetch(`/api/check-access?wallet=${connectedWallet}`);
+        if (!response.ok) {
+           console.error('Guard: Error fetching access status:', response.status);
+           window.location.href = '/?error=access_check_failed';
+           reject('access_check_failed'); // Reject the promise
+           return;
+        }
+        const data = await response.json();
+        hasAccess = data.hasAccess;
+        console.log('Guard: Backend check result:', hasAccess);
+
+      } catch (error) {
+        console.error('Guard: Network error during access check:', error);
+        window.location.href = '/?error=network_error';
+        reject('network_error'); // Reject the promise
+        return;
+      }
+
+      if (!hasAccess) {
+        console.log('Guard: Access denied. Redirecting.');
+        sessionStorage.removeItem('connectedWalletAddress');
+        window.location.href = '/?error=no_access';
+        reject('no_access'); // Reject the promise
+        return;
+      }
+
+      // Access granted - make body visible AND resolve the promise
+      console.log('Guard: Access granted.');
+      document.body.style.visibility = 'visible';
+      resolve(); // Resolve the promise to allow main script to run
+
+    });
+  </script>
+  <!-- END GUARD -->
+
+  <title>Alpha Hunter - Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Custom font: Plus Jakarta Sans */
+    /* Styles remain the same, hidden for brevity */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    /* Style for high-contrast presentation */
-    .data-value {
-        font-weight: 600; /* font-semibold */
-    }
-    /* Applying theme colors for financial/performance context */
-    .positive {
-        color: #20C997; /* vibrant green */
-    }
-    .negative {
-        color: #F44336; /* vibrant red */
-    }
-    
-    .sortable-header {
-      cursor: pointer;
-      user-select: none;
-      transition: color 0.2s;
-    }
-    .sortable-header:hover {
-      color: #FFFFFF; /* Brighter white on hover */
-    }
-    /* Styles for the copy confirmation message */
-    .copy-btn.copied {
-        transition: all 0.2s ease-in-out;
-        color: #20C997; /* positive-green highlight */
-    }
-    
-    /* Sort by Rank button active state */
-    .sort-rank-btn.active {
-        background: #20C997;
-        color: #0A0A0A;
-        border-color: #20C997;
-    }
-    
-    /* Filter toggle button active state */
-    .filter-toggle-btn.active {
-        background: #F44336;
-        color: #FFFFFF;
-        border-color: #F44336;
-    }
-    
-    /* Min value input when filter is active */
-    #min-value-input:focus, #min-value-input-10:focus {
-        outline: none;
-    }
-    
-    /* Table switcher active button state */
-    .table-switch-btn.active {
-      background-color: #E0E0E0;
-      color: #0A0A0A;
-      font-weight: 600;
-    }
-    
-    /* Animation for fade-in effect */
-    @keyframes fade-in {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    .animate-fade-in {
-      animation: fade-in 0.5s ease-out forwards;
-    }
+    /* body is hidden by inline style, not here */
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .data-value { font-weight: 600; }
+    .positive { color: #20C997; }
+    .negative { color: #F44336; }
+    .sortable-header { cursor: pointer; user-select: none; transition: color 0.2s; }
+    .sortable-header:hover { color: #FFFFFF; }
+    .copy-btn.copied { transition: all 0.2s ease-in-out; color: #20C997; }
+    .sort-rank-btn.active { background: #20C997; color: #0A0A0A; border-color: #20C997; }
+    .filter-toggle-btn.active { background: #F44336; color: #FFFFFF; border-color: #F44336; }
+    #min-value-input:focus, #min-value-input-10:focus { outline: none; }
+    .table-switch-btn.active { background-color: #E0E0E0; color: #0A0A0A; font-weight: 600; }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fade-in 0.3s ease-out; }
+    .hidden { display: none; }
   </style>
   <script>
-    // Custom Tailwind Configuration to match the dark, high-contrast theme
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            'dark-bg': '#0A0A0A',
-            'card-bg': '#1A1A1A',
-            'border-subtle': '#2A2A2A',
-            'positive-green': '#20C997',
-            'primary-text': '#E0E0E0',
-            'secondary-text': '#888888',
-            'rank-gold': '#FFD700',
-            'rank-silver': '#C0C0C0',
-            'rank-bronze': '#CD7F32',
+            'dark-bg': '#0A0A0A', 'card-bg': '#1A1A1A', 'border-subtle': '#2A2A0A',
+            'positive-green': '#20C997', 'primary-text': '#E0E0E0', 'secondary-text': '#888888',
+            'rank-gold': '#FFD700', 'rank-silver': '#C0C0C0', 'rank-bronze': '#CD7F32',
           },
         }
       }
     }
   </script>
 </head>
-<body class="bg-dark-bg text-primary-text min-h-screen p-4 sm:p-8">
+<!-- Hide body initially using inline style -->
+<body class="bg-dark-bg text-primary-text min-h-screen p-4 sm:p-8" style="visibility: hidden;">
 
-  <!-- Main Dashboard Application -->
-  <div id="dashboard-app" class="animate-fade-in">
-    <div class="max-w-7xl mx-auto">
-      <!-- Header Section -->
-      <header class="text-center mb-4 sm:mb-6">
-        <h1 id="main-title" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-2">
-          <!-- Title will be set by JS -->
-        </h1>
-        <div id="wallet-count" class="text-sm font-medium text-positive-green bg-card-bg inline-block px-3 py-0.5 rounded-full shadow-lg">
-          Loading...
-        </div>
-      </header>
+  <!-- Content below is now protected by the enhanced guard -->
+  <div class="max-w-7xl mx-auto">
 
-      <!-- Table Switcher Menu -->
-      <div class="flex flex-wrap justify-center gap-2 mb-4 bg-card-bg p-2 rounded-lg border border-border-subtle shadow-lg">
-        <button id="sol_toprunners_btn" onclick="switchTable('sol_toprunners')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
-          SOL Top Runners
-        </button>
-        <button id="sol_dexes_btn" onclick="switchTable('sol_dexes')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
-          SOL DEXes
-        </button>
-        <button id="bsc_toprunners_btn" onclick="switchTable('bsc_toprunners')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
-          BSC Top Runners
-        </button>
-        <button id="bsc_dexes_btn" onclick="switchTable('bsc_dexes')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
-          BSC DEXes
-        </button>
+    <header class="text-center mb-4 sm:mb-6 flex justify-between items-center">
+       <div></div> <!-- Spacer -->
+      <div class="flex flex-col items-center">
+           <h1 id="main-title" class="text-xl sm:text-2xl font-extrabold text-white tracking-tight mb-2">
+            Loading Table...
+            </h1>
+            <div id="wallet-count" class="text-sm font-medium text-positive-green bg-card-bg inline-block px-3 py-0.5 rounded-full shadow-lg">
+            Loading...
+            </div>
+      </div>
+      <!-- Wallet Info & Disconnect -->
+      <div id="dashboard-wallet-info" class="text-right">
+        <p class="text-xs text-secondary-text">Connected:</p>
+        <p id="dashboard-wallet-address" class="text-sm font-mono text-primary-text"></p>
+        <button id="dashboard-disconnect-btn" class="mt-1 text-xs text-red-400 hover:text-red-300 transition-colors">Disconnect</button>
       </div>
 
-      <!-- Controls Section: Search and Table -->
-      <div class="bg-card-bg p-3 sm:p-4 rounded-lg shadow-2xl border border-border-subtle">
-        <!-- Search Bar and Filters -->
-        <div class="mb-4 flex flex-col lg:flex-row gap-3">
-          <input 
-            type="text" 
-            id="search-input"
-            oninput="handleSearch(this.value)"
-            placeholder="Search for Wallet address..." 
-            class="flex-1 p-2 bg-dark-bg text-sm text-primary-text border border-border-subtle rounded-md focus:ring-positive-green focus:border-positive-green transition duration-200 placeholder-secondary-text"
-          >
-          
-          <div class="flex flex-col sm:flex-row gap-3">
-              <!-- Minimum Value Filter (4th Column) -->
-              <div class="flex gap-2 items-center">
-                <input 
-                  type="number" 
-                  id="min-value-input"
-                  placeholder="Num of Tokens"
+    </header>
+
+    <div class="flex flex-wrap justify-center gap-2 mb-4 bg-card-bg p-2 rounded-lg border border-border-subtle shadow-lg">
+      <button id="sol_toprunners_btn" onclick="switchTable('sol_toprunners')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
+        SOL Top Runners
+      </button>
+      <button id="sol_dexes_btn" onclick="switchTable('sol_dexes')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
+        SOL DEXes
+      </button>
+      <button id="bsc_toprunners_btn" onclick="switchTable('bsc_toprunners')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
+        BSC Top Runners
+      </button>
+      <button id="bsc_dexes_btn" onclick="switchTable('bsc_dexes')" class="table-switch-btn flex-grow sm:flex-grow-0 px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-200">
+        BSC DEXes
+      </button>
+    </div>
+
+    <div class="bg-card-bg p-3 sm:p-4 rounded-lg shadow-2xl border border-border-subtle">
+
+      <div class="mb-4 flex flex-col lg:flex-row gap-3">
+        <input
+          type="text"
+          id="search-input"
+          oninput="handleSearch(this.value)"
+          placeholder="Search for Address or Name..."
+          class="flex-1 p-2 bg-dark-bg text-sm text-primary-text border border-border-subtle rounded-md focus:ring-positive-green focus:border-positive-green transition duration-200 placeholder-secondary-text"
+        >
+
+        <div class="flex flex-col sm:flex-row gap-3">
+            <div class="flex gap-2 items-center">
+              <input
+                type="number"
+                id="min-value-input"
+                placeholder="Num of Tokens"
+                step="any"
+                onkeypress="if(event.key === 'Enter') applyMinValueFilter()"
+                class="w-full sm:w-32 p-2 bg-dark-bg text-sm text-primary-text border border-border-subtle rounded-md focus:ring-positive-green focus:border-positive-green transition duration-200 placeholder-secondary-text"
+              >
+              <button
+                id="apply-min-filter-btn"
+                onclick="applyMinValueFilter()"
+                class="px-3 py-2 bg-positive-green hover:bg-positive-green/80 text-dark-bg text-sm font-semibold rounded-md transition duration-200 whitespace-nowrap"
+              >
+                Apply
+              </button>
+              <button
+                id="clear-min-filter-btn"
+                onclick="clearMinValueFilter()"
+                class="px-2 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 hidden"
+                title="Clear filter"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div class="flex gap-2 items-center">
+                <input
+                  type="number"
+                  id="min-value-input-10"
+                  placeholder="Median Hold Time"
                   step="any"
-                  onkeypress="if(event.key === 'Enter') applyMinValueFilter()"
+                  onkeypress="if(event.key === 'Enter') applyMinValueFilter10()"
                   class="w-full sm:w-32 p-2 bg-dark-bg text-sm text-primary-text border border-border-subtle rounded-md focus:ring-positive-green focus:border-positive-green transition duration-200 placeholder-secondary-text"
                 >
-                <button 
-                  id="apply-min-filter-btn"
-                  onclick="applyMinValueFilter()"
+                <button
+                  id="apply-min-filter-btn-10"
+                  onclick="applyMinValueFilter10()"
                   class="px-3 py-2 bg-positive-green hover:bg-positive-green/80 text-dark-bg text-sm font-semibold rounded-md transition duration-200 whitespace-nowrap"
                 >
                   Apply
                 </button>
-                <button 
-                  id="clear-min-filter-btn"
-                  onclick="clearMinValueFilter()"
+                <button
+                  id="clear-min-filter-btn-10"
+                  onclick="clearMinValueFilter10()"
                   class="px-2 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 hidden"
                   title="Clear filter"
                 >
@@ -174,407 +198,361 @@
                   </svg>
                 </button>
               </div>
-      
-              <!-- Minimum Value Filter (10th Column) -->
-              <div class="flex gap-2 items-center">
-                  <input 
-                    type="number" 
-                    id="min-value-input-10"
-                    placeholder="Median Hold Time"
-                    step="any"
-                    onkeypress="if(event.key === 'Enter') applyMinValueFilter10()"
-                    class="w-full sm:w-32 p-2 bg-dark-bg text-sm text-primary-text border border-border-subtle rounded-md focus:ring-positive-green focus:border-positive-green transition duration-200 placeholder-secondary-text"
-                  >
-                  <button 
-                    id="apply-min-filter-btn-10"
-                    onclick="applyMinValueFilter10()"
-                    class="px-3 py-2 bg-positive-green hover:bg-positive-green/80 text-dark-bg text-sm font-semibold rounded-md transition duration-200 whitespace-nowrap"
-                  >
-                    Apply
-                  </button>
-                  <button 
-                    id="clear-min-filter-btn-10"
-                    onclick="clearMinValueFilter10()"
-                    class="px-2 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 hidden"
-                    title="Clear filter"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                  </button>
-                </div>
-          </div>
         </div>
-        
-        <!-- Action Buttons Row -->
-        <div class="mb-4 flex flex-col sm:flex-row gap-3">
-          <button 
-            id="sort-rank-btn"
-            onclick="toggleSortByRank()"
-            class="sort-rank-btn px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
+      </div>
+
+      <div class="mb-4 flex flex-col sm:flex-row gap-3">
+        <button
+          id="sort-rank-btn"
+          onclick="toggleSortByRank()"
+          class="sort-rank-btn px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+          </svg>
+          <span id="sort-rank-text">Sort by Rank</span>
+        </button>
+
+        <button
+          id="filter-toggle-btn"
+          onclick="toggleAdvancedFilter()"
+          class="filter-toggle-btn px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          <span id="filter-toggle-text">Hide Negative Avg X</span>
+        </button>
+
+        <div class="relative">
+          <button
+            id="export-btn"
+            onclick="toggleExportMenu()"
+            class="px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
             </svg>
-            <span id="sort-rank-text">Sort by Rank</span>
-          </button>
-          
-          <button 
-            id="filter-toggle-btn"
-            onclick="toggleAdvancedFilter()"
-            class="filter-toggle-btn px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-            </svg>
-            <span id="filter-toggle-text">Hide Negative Avg X</span>
+            Export
           </button>
 
-          <div class="relative">
-            <button 
-              id="export-btn"
-              onclick="toggleExportMenu()"
-              class="px-4 py-2 bg-border-subtle hover:bg-secondary-text/30 text-primary-text text-sm font-semibold rounded-md transition duration-200 border border-border-subtle flex items-center justify-center gap-2 whitespace-nowrap"
+          <div id="export-menu" class="hidden absolute right-0 mt-2 w-48 bg-card-bg rounded-md shadow-xl border border-border-subtle z-50">
+            <button
+              onclick="exportToCSV()"
+              class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2 rounded-t-md"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
-              Export
+              Export as CSV
             </button>
-            
-            <!-- Export Dropdown Menu -->
-            <div id="export-menu" class="hidden absolute right-0 mt-2 w-48 bg-card-bg rounded-md shadow-xl border border-border-subtle z-50">
-              <button 
-                onclick="exportToCSV()"
-                class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2 rounded-t-md"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Export as CSV
-              </button>
-              <button 
-                onclick="exportToExcel()"
-                class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                </svg>
-                Export as Excel
-              </button>
-              <button 
-                onclick="exportWalletsOnly()"
-                class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2 border-t border-border-subtle rounded-b-md"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                Export Wallets Only (TXT)
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Loading Spinner -->
-        <div id="loading-spinner" class="text-center p-8 hidden">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-positive-green mx-auto"></div>
-          <p class="mt-3 text-sm text-secondary-text">Loading wallet data...</p>
-        </div>
-
-        <!-- Table Container -->
-        <div id="table-container" class="overflow-x-auto">
-          <!-- Table will be rendered here -->
-        </div>
-        
-        <!-- Pagination and Last Updated Footer -->
-        <div class="flex flex-col sm:flex-row justify-between items-center mt-4 pt-3 border-t border-border-subtle">
-          
-          <div id="last-updated" class="text-xs text-secondary-text order-2 sm:order-1 mt-2 sm:mt-0">
-            Last Updated: N/A
-          </div>
-
-          <div id="pagination-controls" class="flex space-x-2 order-1 sm:order-2">
-            <button 
-              id="prev-button" 
-              onclick="changePage(-1)" 
-              disabled 
-              class="px-2 py-0.5 text-xs rounded-full bg-border-subtle hover:bg-secondary-text/30 disabled:opacity-50 transition duration-200 text-primary-text"
+            <button
+              onclick="exportToExcel()"
+              class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2"
             >
-              &larr; Previous
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+              </svg>
+              Export as Excel
             </button>
-            <div id="page-info" class="text-xs px-2 py-0.5 text-secondary-text">Page 1 of 1</div>
-            <button 
-              id="next-button" 
-              onclick="changePage(1)" 
-              disabled 
-              class="px-2 py-0.5 text-xs rounded-full bg-border-subtle hover:bg-secondary-text/30 disabled:opacity-50 transition duration-200 text-primary-text"
+            <button
+              onclick="exportWalletsOnly()"
+              class="w-full text-left px-4 py-2 text-sm text-primary-text hover:bg-border-subtle transition duration-150 flex items-center gap-2 border-t border-border-subtle rounded-b-md"
             >
-              Next &rarr;
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Export Addresses Only (TXT)
             </button>
           </div>
         </div>
       </div>
-      <!-- Footer for Dashboard -->
-      <footer class="mt-12 text-center text-secondary-text text-sm">
-        <p>Built with ❤️ by Stilldasmainaemon</p>
-        <p class="mt-1">Copyright &copy; 2025</p>
-      </footer>
+
+      <div id="loading-spinner" class="text-center p-8 hidden">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-positive-green mx-auto"></div>
+        <p class="mt-3 text-sm text-secondary-text">Loading data...</p>
+      </div>
+
+      <div id="table-container" class="overflow-x-auto">
+        <!-- Table will be rendered here -->
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-center mt-4 pt-3 border-t border-border-subtle">
+
+        <div id="last-updated" class="text-xs text-secondary-text order-2 sm:order-1 mt-2 sm:mt-0">
+          Last Updated: N/A
+        </div>
+
+        <div id="pagination-controls" class="flex space-x-2 order-1 sm:order-2">
+          <button
+            id="prev-button"
+            onclick="changePage(-1)"
+            disabled
+            class="px-2 py-0.5 text-xs rounded-full bg-border-subtle hover:bg-secondary-text/30 disabled:opacity-50 transition duration-200 text-primary-text"
+          >
+            &larr; Previous
+          </button>
+          <div id="page-info" class="text-xs px-2 py-0.5 text-secondary-text">Page 1 of 1</div>
+          <button
+            id="next-button"
+            onclick="changePage(1)"
+            disabled
+            class="px-2 py-0.5 text-xs rounded-full bg-border-subtle hover:bg-secondary-text/30 disabled:opacity-50 transition duration-200 text-primary-text"
+          >
+            Next &rarr;
+          </button>
+        </div>
+      </div>
     </div>
+
+    <footer class="mt-12 text-center text-secondary-text text-sm">
+      <p>Built with ❤️ by Stilldasmainaemon</p>
+      <p class="mt-1">Copyright &copy; 2025</p>
+    </footer>
   </div>
 
-  <script>
-    // --- Global State & Config ---
+   <script type="module">
+     // Import modal for disconnect functionality (optional, depends if needed on this page)
+     // If not needed, remove this import and related disconnect logic
+      import { createWeb3Modal, defaultConfig } from 'https://esm.sh/@web3modal/ethers@4.1.11';
+
+     // --- Global State & Config ---
     const tablesConfig = {
       'sol_toprunners': { title: 'Alpha Wallets on All SOL Top Runners', sheetName: 'Sheet1' },
       'bsc_toprunners': { title: 'Alpha Wallets on All BSC Top Runners', sheetName: 'Sheet2' },
       'sol_dexes': { title: 'All DEXes on SOL', sheetName: 'Sheet3' },
       'bsc_dexes': { title: 'All DEXes on BSC', sheetName: 'Sheet4' }
     };
-    let activeTableKey = 'sol_toprunners';
+    let activeTableKey = 'sol_toprunners'; // Default
 
     let originalData = [];
     let data = [];
     let filteredData = [];
     let currentPage = 1;
     const itemsPerPage = 10;
-    let sortState = { key: null, direction: 'none' }; 
-    let rankSortState = 'none'; // 'none', 'asc', 'desc'
-    let hideNegativeFilter = false; // Advanced filter state
-    let minValueFilter = null; // Minimum value filter for 4th column
-    let minValueFilter10 = null; // Minimum value filter for 10th column
+    let sortState = { key: null, direction: 'none' };
+    let rankSortState = 'none';
+    let hideNegativeFilter = false;
+    let minValueFilter = null;
+    let minValueFilter10 = null;
 
-    // --- Page & App Initialization ---
+     // --- WalletConnect Modal Initialization (for potential disconnect) ---
+     let modal;
+     // IMPORTANT: This needs to be the same Project ID used on index.html
+     const projectId = 'PASTE_YOUR_PROJECT_ID_HERE'; // Needs to be the same ID
+     if (projectId && projectId !== 'PASTE_YOUR_PROJECT_ID_HERE') {
+         try {
+             // Basic config is enough, we only need the disconnect method
+             const metadata = { name: 'Alpha Hunter', description: 'Dashboard', url: window.location.href, icons: [] };
+             const ethersConfig = defaultConfig({ metadata });
+             modal = createWeb3Modal({ ethersConfig, chains: [{chainId: 1, name: 'Ethereum'}], projectId, enableAnalytics: false, themeMode: 'dark' });
+             console.log("Dashboard: Web3Modal initialized for disconnect.");
+         } catch (error) {
+             console.error("Dashboard: Failed to initialize Web3Modal for disconnect:", error);
+         }
+     } else {
+         console.warn("Dashboard: WalletConnect Project ID not set, disconnect button might not fully function.");
+     }
 
-    window.onload = () => {
-        // This function is only relevant for dashboard.html
-        if(document.getElementById('dashboard-app')) {
+
+     // --- DOM Elements ---
+     const mainTitleEl = document.getElementById('main-title');
+     const walletCountEl = document.getElementById('wallet-count');
+     const tableContainer = document.getElementById('table-container');
+     const loadingSpinner = document.getElementById('loading-spinner');
+     const searchInput = document.getElementById('search-input');
+     const minValueInput = document.getElementById('min-value-input');
+     const clearMinValueBtn = document.getElementById('clear-min-filter-btn');
+     const minValueInput10 = document.getElementById('min-value-input-10');
+     const clearMinValueBtn10 = document.getElementById('clear-min-filter-btn-10');
+     const applyMinFilterBtn = document.getElementById('apply-min-filter-btn');
+     const applyMinFilterBtn10 = document.getElementById('apply-min-filter-btn-10');
+     const filterToggleBtn = document.getElementById('filter-toggle-btn');
+     const filterToggleText = document.getElementById('filter-toggle-text');
+     const sortRankBtn = document.getElementById('sort-rank-btn');
+     const sortRankText = document.getElementById('sort-rank-text');
+     const pageInfoEl = document.getElementById('page-info');
+     const prevBtn = document.getElementById('prev-button');
+     const nextBtn = document.getElementById('next-button');
+     const lastUpdatedEl = document.getElementById('last-updated');
+     const dashboardWalletAddressEl = document.getElementById('dashboard-wallet-address');
+     const dashboardDisconnectBtn = document.getElementById('dashboard-disconnect-btn');
+
+
+    // --- Initialization ---
+    // Wrap main logic in an async function to wait for the guard promise
+    async function initializeDashboard() {
+        try {
+            // Wait for the guard script to finish verification
+            await window.accessVerificationPromise;
+            console.log("Dashboard: Access verified by guard. Initializing...");
+
+            // Retrieve wallet from session storage (guaranteed to exist now)
+            const connectedWallet = sessionStorage.getItem('connectedWalletAddress');
+            console.log("Dashboard loaded with wallet:", connectedWallet);
+
+            if (dashboardWalletAddressEl) {
+                dashboardWalletAddressEl.textContent = shortenAddress(connectedWallet);
+            }
+
+            if (dashboardDisconnectBtn) {
+                 dashboardDisconnectBtn.addEventListener('click', async () => {
+                     console.log("Disconnect button clicked.");
+                     sessionStorage.removeItem('connectedWalletAddress');
+                     if (modal) {
+                         try { await modal.disconnect(); console.log("Modal disconnect call successful."); }
+                         catch (err) { console.error("Error during modal disconnect:", err); }
+                     } else { console.log("Modal not initialized for disconnect."); }
+                     window.location.href = '/?status=disconnected';
+                 });
+            }
+
+            // Load the default table since access is confirmed
             switchTable('sol_toprunners');
-        }
-    };
 
+        } catch (errorReason) {
+             // This catch block runs if the guard promise was rejected (i.e., user was redirected)
+             console.log(`Dashboard Initialization aborted: ${errorReason}`);
+             // No need to do anything else, redirection already happened or is happening
+        }
+    }
+
+    // Call the initialization function when the DOM is ready
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+
+     // Close export menu when clicking outside
+     document.addEventListener('click', function(event) {
+        const exportBtn = document.getElementById('export-btn');
+        const exportMenu = document.getElementById('export-menu');
+        if (exportBtn && exportMenu && !exportBtn.contains(event.target) && !exportMenu.contains(event.target)) {
+            exportMenu.classList.add('hidden');
+        }
+    });
 
     // --- Utility Functions ---
-
-    /**
-     * Attempts to parse a string value into a number, handling symbols.
-     */
     function parseValue(value) {
       if (typeof value !== 'string') return value;
       const cleaned = value.replace(/[\$\%,]/g, '');
-      if (!isNaN(parseFloat(cleaned)) && isFinite(cleaned)) {
-          return parseFloat(cleaned);
-      }
-      return value.toLowerCase(); 
+      if (!isNaN(parseFloat(cleaned)) && isFinite(cleaned)) return parseFloat(cleaned);
+      return value.toLowerCase();
     }
 
-    /**
-     * Shortens a long wallet address for display.
-     */
     function shortenAddress(address, chars = 6) {
       if (!address || address.length <= chars * 2 + 3) return address;
       return `${address.substring(0, chars)}...${address.substring(address.length - chars)}`;
     }
 
-    /**
-     * Copies text to the clipboard and provides visual feedback.
-     */
-    function copyToClipboard(event, text) {
-      const button = event.currentTarget;
-      const tempInput = document.createElement('textarea');
-      tempInput.value = text;
-      document.body.appendChild(tempInput);
-      tempInput.select();
-      
-      try {
-        document.execCommand('copy');
-        const originalIcon = button.innerHTML;
-        button.innerHTML = 'COPIED!';
-        button.classList.add('copied');
-        
-        setTimeout(() => {
-          button.innerHTML = originalIcon;
-          button.classList.remove('copied');
-        }, 1500);
+    // Use global copy function attached to window
+     window.copyToClipboard = function(event, text) {
+        const button = event.currentTarget;
+        navigator.clipboard.writeText(text).then(() => {
+            const originalIconHTML = button.innerHTML; // Store original SVG HTML
+            button.innerHTML = '<span class="text-xs font-bold">COPIED!</span>'; // Simple text feedback
+            button.classList.add('copied');
+            setTimeout(() => {
+                 if (button) { // Check if button still exists
+                     button.innerHTML = originalIconHTML; // Restore original SVG
+                     button.classList.remove('copied');
+                 }
+            }, 1500);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            // Fallback for environments where clipboard API might fail (like insecure contexts or some iframes)
+            try {
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
 
-      } catch (err) {
-        console.error('Failed to copy text: ', err);
-      }
-      document.body.removeChild(tempInput);
+                const originalIconHTML = button.innerHTML;
+                button.innerHTML = '<span class="text-xs font-bold">COPIED!</span>';
+                button.classList.add('copied');
+                setTimeout(() => {
+                     if (button) {
+                         button.innerHTML = originalIconHTML;
+                         button.classList.remove('copied');
+                     }
+                }, 1500);
+
+            } catch (fallbackErr) {
+                 console.error('Fallback copy failed: ', fallbackErr);
+                 alert('Failed to copy address.'); // Let the user know if all methods fail
+            }
+        });
     }
-    
-    /**
-     * Compares two values for sorting.
-     */
+
     function compareValues(a, b, direction) {
         const valA = parseValue(a);
         const valB = parseValue(b);
         let comparison = 0;
-
-        if (valA > valB) {
-            comparison = 1;
-        } else if (valA < valB) {
-            comparison = -1;
+        if (typeof valA === 'number' && typeof valB === 'number') {
+            comparison = valA - valB;
+        } else {
+            const strA = String(valA);
+            const strB = String(valB);
+            if (strA > strB) comparison = 1;
+            else if (strA < strB) comparison = -1;
         }
         return direction === 'asc' ? comparison : comparison * -1;
     }
-    
-    /**
-     * Calculates and assigns a stable composite rank based on the 8th (primary) and 6th (tie-breaker) columns.
-     */
-    function calculateCompositeRanks(data) {
-        if (!data || data.length === 0 || Object.keys(data[0]).length < 8) {
+
+     function calculateCompositeRanks(data) {
+        if (!data || data.length === 0) return;
+        const headers = Object.keys(data[0]);
+        if (headers.length < 8) {
             console.warn("Data has fewer than 8 columns, skipping composite ranking.");
+             data.forEach(row => row.compositeRank = 'N/A'); // Assign N/A if cannot rank
             return;
         }
-
-        const allHeaders = Object.keys(data[0]);
-        const key6 = allHeaders[5]; // 6th column (index 5)
-        const key8 = allHeaders[7]; // 8th column (index 7)
-
-        // Create a mutable copy to sort for ranking purposes
+        const key6 = headers[5];
+        const key8 = headers[7];
         const rankedData = [...data];
-
-        // Sort: primary key8 (desc), secondary key6 (desc)
         rankedData.sort((a, b) => {
-            // Compare by 8th column first (descending)
-            const comparison8 = compareValues(a[key8], b[key8], 'desc');
-            if (comparison8 !== 0) {
-                return comparison8;
-            }
-            // If tied, compare by 6th column (descending)
+            const comp8 = compareValues(a[key8], b[key8], 'desc');
+            if (comp8 !== 0) return comp8;
             return compareValues(a[key6], b[key6], 'desc');
         });
-
-        // Assign rank property to the objects
-        rankedData.forEach((row, index) => {
-            row.compositeRank = index + 1;
-        });
+        rankedData.forEach((row, index) => row.compositeRank = index + 1);
     }
 
-    // --- Sort by Rank Logic ---
-    
-    /**
-     * Toggles the rank sorting between none -> asc -> desc -> none
-     */
-    function toggleSortByRank() {
-        const button = document.getElementById('sort-rank-btn');
-        const buttonText = document.getElementById('sort-rank-text');
-        
-        // Clear any column-based sorting
-        sortState = { key: null, direction: 'none' };
-        
-        // Cycle through: none -> asc -> desc -> none
-        if (rankSortState === 'none') {
-            rankSortState = 'asc';
-            data.sort((a, b) => (a.compositeRank || 0) - (b.compositeRank || 0));
-            button.classList.add('active');
-            buttonText.textContent = 'Rank ↑';
-        } else if (rankSortState === 'asc') {
-            rankSortState = 'desc';
-            data.sort((a, b) => (b.compositeRank || 0) - (a.compositeRank || 0));
-            button.classList.add('active');
-            buttonText.textContent = 'Rank ↓';
-        } else {
-            rankSortState = 'none';
-            data = [...originalData];
-            button.classList.remove('active');
-            buttonText.textContent = 'Sort by Rank';
-        }
-        
-        const searchInput = document.getElementById('search-input');
-        handleSearch(searchInput ? searchInput.value : '');
-        currentPage = 1;
-        renderTable();
+     // --- State Management and UI Updates ---
+
+     function resetStateAndUI() {
+        originalData = []; data = []; filteredData = []; currentPage = 1;
+        sortState = { key: null, direction: 'none' }; rankSortState = 'none';
+        hideNegativeFilter = false; minValueFilter = null; minValueFilter10 = null;
+
+        if(searchInput) searchInput.value = '';
+        if(minValueInput) minValueInput.value = '';
+        if(minValueInput10) minValueInput10.value = '';
+
+        if(sortRankBtn) sortRankBtn.classList.remove('active');
+        if(sortRankText) sortRankText.textContent = 'Sort by Rank';
+        if(filterToggleBtn) filterToggleBtn.classList.remove('active');
+        if(filterToggleText) filterToggleText.textContent = 'Hide Negative Avg X';
+        if(clearMinValueBtn) clearMinValueBtn.classList.add('hidden');
+        if(clearMinValueBtn10) clearMinValueBtn10.classList.add('hidden');
+        if(minValueInput) minValueInput.classList.remove('border-positive-green', 'border-2');
+        if(minValueInput10) minValueInput10.classList.remove('border-positive-green', 'border-2');
+
+        if(tableContainer) tableContainer.innerHTML = '';
+        if(walletCountEl) walletCountEl.textContent = 'Loading...';
+        if(loadingSpinner) loadingSpinner.style.display = 'block'; // Show spinner during reset/load
     }
 
-    // --- Sorting Logic ---
-    
-    /**
-     * Handles the sorting logic when a header is clicked.
-     */
-    function handleSort(key) {
-        // Clear rank sorting when column sorting is used
-        rankSortState = 'none';
-        const button = document.getElementById('sort-rank-btn');
-        const buttonText = document.getElementById('sort-rank-text');
-        button.classList.remove('active');
-        buttonText.textContent = 'Sort by Rank';
-        
-        const currentKey = sortState.key;
-        const currentDirection = sortState.direction;
-
-        if (currentKey !== key) {
-            sortState.key = key;
-            sortState.direction = 'asc'; 
-        } else if (currentDirection === 'asc') {
-            sortState.direction = 'desc'; 
-        } else if (currentDirection === 'desc') {
-            sortState.key = null;
-            sortState.direction = 'none';
-        }
-
-        if (sortState.direction === 'none') {
-            data = [...originalData];
-        } else {
-            data.sort((a, b) => compareValues(a[key], b[key], sortState.direction));
-        }
-        
-        const searchInput = document.getElementById('search-input');
-        handleSearch(searchInput ? searchInput.value : '');
-        currentPage = 1; 
-        renderTable();
-    }
-
-    // --- Data Loading and State Management ---
-
-    function resetStateAndUI() {
-        originalData = [];
-        data = [];
-        filteredData = [];
-        currentPage = 1;
-        sortState = { key: null, direction: 'none' };
-        rankSortState = 'none';
-        hideNegativeFilter = false;
-        minValueFilter = null;
-        minValueFilter10 = null;
-
-        // Clear inputs
-        document.getElementById('search-input').value = '';
-        document.getElementById('min-value-input').value = '';
-        document.getElementById('min-value-input-10').value = '';
-
-        // Reset buttons to default state
-        document.getElementById('sort-rank-btn').classList.remove('active');
-        document.getElementById('sort-rank-text').textContent = 'Sort by Rank';
-        document.getElementById('filter-toggle-btn').classList.remove('active');
-        document.getElementById('filter-toggle-text').textContent = 'Hide Negative Avg X';
-        document.getElementById('clear-min-filter-btn').classList.add('hidden');
-        document.getElementById('clear-min-filter-btn-10').classList.add('hidden');
-        document.getElementById('min-value-input').classList.remove('border-positive-green', 'border-2');
-        document.getElementById('min-value-input-10').classList.remove('border-positive-green', 'border-2');
-
-        // Clear table and counts
-        document.getElementById("table-container").innerHTML = '';
-        document.getElementById("wallet-count").textContent = 'Loading...';
-    }
-
-
-    function switchTable(tableKey) {
-        if (activeTableKey === tableKey && originalData.length > 0) return; // Do nothing if already active and loaded
+      window.switchTable = function(tableKey) {
+        // No need to check if active, always reload/reset when button clicked
         activeTableKey = tableKey;
         const config = tablesConfig[tableKey];
 
-        // Update UI
-        document.getElementById('main-title').textContent = config.title;
+        if(mainTitleEl) mainTitleEl.textContent = config.title;
 
-        // Update active button style
         Object.keys(tablesConfig).forEach(key => {
             const btn = document.getElementById(`${key}_btn`);
-            if (key === tableKey) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            if (btn) btn.classList.toggle('active', key === tableKey);
         });
 
         resetStateAndUI();
@@ -583,469 +561,392 @@
 
 
     async function loadData(sheetName) {
-      const loadingSpinner = document.getElementById("loading-spinner");
-      const tableContainer = document.getElementById("table-container");
-      const API_ENDPOINT = `/api/sheets/data?sheet=${sheetName}`;
-      
+      if(!loadingSpinner || !tableContainer || !lastUpdatedEl) {
+        console.error("Dashboard core elements not found.");
+        return;
+      }
       loadingSpinner.style.display = 'block';
-      tableContainer.innerHTML = ''; // Clear previous table
-      document.getElementById("last-updated").textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
+      tableContainer.innerHTML = '';
+      lastUpdatedEl.textContent = `Last Updated: ${new Date().toLocaleTimeString()}`;
+      const API_ENDPOINT = `/api/sheets/data?sheet=${sheetName}`;
 
       try {
         const res = await fetch(API_ENDPOINT);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Error loading data from API. Status: ${res.status}, Body: ${errorText}`);
+            throw new Error(`HTTP error ${res.status}`);
+        }
         const fetchedData = await res.json();
-        
-        loadingSpinner.style.display = 'none';
 
         if (!Array.isArray(fetchedData) || fetchedData.length === 0) {
-          tableContainer.innerHTML =
-            "<div class='text-xs p-4 text-secondary-text'>No data available for this table.</div>";
-          document.getElementById("wallet-count").textContent = '0 Entries';
+          tableContainer.innerHTML = "<div class='text-xs p-4 text-secondary-text'>No data available for this table.</div>";
+           if(walletCountEl) walletCountEl.textContent = '0 Entries';
+           updatePaginationUI(); // Update pagination even if no data
           return;
         }
 
-        calculateCompositeRanks(fetchedData); 
-        
-        originalData = fetchedData; 
+        calculateCompositeRanks(fetchedData);
+        originalData = fetchedData;
         data = [...fetchedData];
-        
-        handleSearch(document.getElementById('search-input').value || ''); 
-        
+        handleSearch(searchInput ? searchInput.value : ''); // Apply initial search/filter
+
       } catch (err) {
         console.error("Error loading data:", err);
-        loadingSpinner.style.display = 'none';
-        tableContainer.innerHTML =
-          "<div class='text-xs p-4 negative'>Failed to load data. Ensure your backend API is running.</div>";
+        tableContainer.innerHTML = "<div class='text-xs p-4 text-red-500'>Failed to load data. Please ensure the backend API is running correctly and check the browser console for details.</div>";
+         if(walletCountEl) walletCountEl.textContent = 'Error';
+         updatePaginationUI(); // Update pagination even on error
+      } finally {
+         if(loadingSpinner) loadingSpinner.style.display = 'none'; // Hide spinner after loading
       }
     }
 
-    /**
-     * Filters the data based on the search input and resets pagination.
-     */
-    function handleSearch(searchText) {
-      const query = searchText.toLowerCase().trim();
-      
-      if (data.length === 0) {
-        filteredData = [];
-      } else {
-        const firstKey = Object.keys(data[0])[0];
-        if (query === '') {
-            filteredData = [...data];
-        } else {
-            filteredData = data.filter(row => 
-            String(row[firstKey]).toLowerCase().includes(query)
-            );
+
+     // --- Filtering and Sorting ---
+     // Make globally accessible
+     window.handleSearch = function(searchText) {
+        const query = searchText ? searchText.toLowerCase().trim() : '';
+        if (data.length === 0) { filteredData = []; }
+        else {
+            const firstKey = Object.keys(data[0])[0];
+            if (query === '') { filteredData = [...data]; }
+            else {
+                // Search across all string values in the row, not just the first key
+                 filteredData = data.filter(row =>
+                     Object.values(row).some(value =>
+                         typeof value === 'string' && value.toLowerCase().includes(query)
+                     )
+                 );
+            }
         }
-      }
-
-      applyAdvancedFilter();
-      applyMinValueFilterToData();
-      applyMinValueFilterToData10();
-
-      currentPage = 1; 
-      const entryType = activeTableKey.includes('dexes') ? 'DEXes' : 'Wallets';
-      document.getElementById("wallet-count").textContent = `${filteredData.length} ${entryType}`;
-      renderTable();
-    }
-    
-    /**
-     * Applies the minimum value filter to the 4th column
-     */
-    function applyMinValueFilter() {
-      const input = document.getElementById('min-value-input');
-      const value = input.value.trim();
-      
-      if (value === '') {
-        alert('Please enter a minimum value');
-        return;
-      }
-      
-      const numValue = parseFloat(value);
-      
-      if (isNaN(numValue)) {
-        alert('Please enter a valid number');
-        return;
-      }
-      
-      minValueFilter = numValue;
-      
-      document.getElementById('clear-min-filter-btn').classList.remove('hidden');
-      input.classList.add('border-positive-green', 'border-2');
-      
-      handleSearch(document.getElementById('search-input').value);
-      
-      const btn = document.getElementById('apply-min-filter-btn');
-      const originalText = btn.textContent;
-      btn.textContent = '✓ Applied';
-      setTimeout(() => { btn.textContent = originalText; }, 1500);
-    }
-    
-    /**
-     * Clears the minimum value filter for the 4th column
-     */
-    function clearMinValueFilter() {
-      minValueFilter = null;
-      
-      const input = document.getElementById('min-value-input');
-      input.value = '';
-      input.classList.remove('border-positive-green', 'border-2');
-      document.getElementById('clear-min-filter-btn').classList.add('hidden');
-      
-      handleSearch(document.getElementById('search-input').value);
-    }
-    
-    /**
-     * Applies the minimum value filter to filtered data (4th column)
-     */
-    function applyMinValueFilterToData() {
-      if (minValueFilter === null) return;
-      if (filteredData.length === 0) return;
-      
-      const allHeaders = Object.keys(filteredData[0]);
-      
-      if (allHeaders.length < 4) {
-        console.warn("Data has fewer than 4 columns, skipping min value filter.");
-        return;
-      }
-      
-      const fourthColumnKey = allHeaders[3];
-      
-      filteredData = filteredData.filter(row => {
-        const numValue = parseValue(row[fourthColumnKey]);
-        return typeof numValue === 'number' && numValue >= minValueFilter;
-      });
+        applyAdvancedFilter();
+        applyMinValueFilterToData();
+        applyMinValueFilterToData10();
+        currentPage = 1;
+        const entryType = activeTableKey.includes('dexes') ? 'DEXes' : 'Wallets';
+        if(walletCountEl) walletCountEl.textContent = `${filteredData.length} ${entryType}`;
+        renderTable();
     }
 
-    /**
-     * Applies the minimum value filter to the 10th column
-     */
-    function applyMinValueFilter10() {
-        const input = document.getElementById('min-value-input-10');
-        const value = input.value.trim();
-        if (value === '') {
-            alert('Please enter a minimum value');
-            return;
-        }
+     window.applyMinValueFilter = function() {
+        if(!minValueInput || !clearMinValueBtn || !applyMinFilterBtn) return;
+        const value = minValueInput.value.trim();
+        if (value === '') return alert('Please enter a minimum value');
         const numValue = parseFloat(value);
-        if (isNaN(numValue)) {
-            alert('Please enter a valid number');
-            return;
-        }
-        minValueFilter10 = numValue;
-        document.getElementById('clear-min-filter-btn-10').classList.remove('hidden');
-        input.classList.add('border-positive-green', 'border-2');
-        handleSearch(document.getElementById('search-input').value);
-        const btn = document.getElementById('apply-min-filter-btn-10');
-        const originalText = btn.textContent;
-        btn.textContent = '✓ Applied';
-        setTimeout(() => { btn.textContent = originalText; }, 1500);
+        if (isNaN(numValue)) return alert('Please enter a valid number');
+        minValueFilter = numValue;
+        clearMinValueBtn.classList.remove('hidden');
+        minValueInput.classList.add('border-positive-green', 'border-2');
+        handleSearch(searchInput ? searchInput.value : '');
+        const originalText = applyMinFilterBtn.textContent;
+        applyMinFilterBtn.textContent = '✓ Applied';
+        setTimeout(() => { if(applyMinFilterBtn) applyMinFilterBtn.textContent = originalText; }, 1500);
     }
 
-    /**
-     * Clears the minimum value filter for the 10th column
-     */
-    function clearMinValueFilter10() {
-        minValueFilter10 = null;
-        const input = document.getElementById('min-value-input-10');
-        input.value = '';
-        input.classList.remove('border-positive-green', 'border-2');
-        document.getElementById('clear-min-filter-btn-10').classList.add('hidden');
-        handleSearch(document.getElementById('search-input').value);
+     window.clearMinValueFilter = function() {
+        if(!minValueInput || !clearMinValueBtn) return;
+        minValueFilter = null;
+        minValueInput.value = '';
+        minValueInput.classList.remove('border-positive-green', 'border-2');
+        clearMinValueBtn.classList.add('hidden');
+        handleSearch(searchInput ? searchInput.value : '');
     }
 
-
-    /**
-     * Applies the minimum value filter to filtered data (10th column)
-     */
-    function applyMinValueFilterToData10() {
-        if (minValueFilter10 === null) return;
-        if (filteredData.length === 0) return;
-
-        const allHeaders = Object.keys(filteredData[0]);
-
-        if (allHeaders.length < 10) {
-            console.warn("Data has fewer than 10 columns, skipping min value filter for 10th column.");
-            return;
-        }
-
-        const tenthColumnKey = allHeaders[9];
-
+    function applyMinValueFilterToData() {
+        if (minValueFilter === null || filteredData.length === 0) return;
+        const headers = Object.keys(filteredData[0]);
+        if (headers.length < 4) return console.warn("Not enough columns for min value filter 4.");
+        const key = headers[3];
         filteredData = filteredData.filter(row => {
-            const numValue = parseValue(row[tenthColumnKey]);
+            const numValue = parseValue(row[key]);
+            return typeof numValue === 'number' && numValue >= minValueFilter;
+        });
+    }
+
+     window.applyMinValueFilter10 = function() {
+         if(!minValueInput10 || !clearMinValueBtn10 || !applyMinFilterBtn10) return;
+        const value = minValueInput10.value.trim();
+        if (value === '') return alert('Please enter a minimum value');
+        const numValue = parseFloat(value);
+        if (isNaN(numValue)) return alert('Please enter a valid number');
+        minValueFilter10 = numValue;
+        clearMinValueBtn10.classList.remove('hidden');
+        minValueInput10.classList.add('border-positive-green', 'border-2');
+        handleSearch(searchInput ? searchInput.value : '');
+         const originalText = applyMinFilterBtn10.textContent;
+        applyMinFilterBtn10.textContent = '✓ Applied';
+        setTimeout(() => { if(applyMinFilterBtn10) applyMinFilterBtn10.textContent = originalText; }, 1500);
+    }
+
+     window.clearMinValueFilter10 = function() {
+        if(!minValueInput10 || !clearMinValueBtn10) return;
+        minValueFilter10 = null;
+        minValueInput10.value = '';
+        minValueInput10.classList.remove('border-positive-green', 'border-2');
+        clearMinValueBtn10.classList.add('hidden');
+        handleSearch(searchInput ? searchInput.value : '');
+    }
+
+    function applyMinValueFilterToData10() {
+        if (minValueFilter10 === null || filteredData.length === 0) return;
+        const headers = Object.keys(filteredData[0]);
+        if (headers.length < 10) return console.warn("Not enough columns for min value filter 10.");
+        const key = headers[9];
+        filteredData = filteredData.filter(row => {
+            const numValue = parseValue(row[key]);
             return typeof numValue === 'number' && numValue >= minValueFilter10;
         });
     }
-    
-    /**
-     * Toggles the advanced filter to hide/show negative 9th column values
-     */
-    function toggleAdvancedFilter() {
-      hideNegativeFilter = !hideNegativeFilter;
-      
-      const button = document.getElementById('filter-toggle-btn');
-      const buttonText = document.getElementById('filter-toggle-text');
-      
-      if (hideNegativeFilter) {
-        button.classList.add('active');
-        buttonText.textContent = 'Show All';
-      } else {
-        button.classList.remove('active');
-        buttonText.textContent = 'Hide Negative Avg X';
-      }
-      
-      handleSearch(document.getElementById('search-input').value);
+
+     window.toggleAdvancedFilter = function() {
+        if(!filterToggleBtn || !filterToggleText) return;
+        hideNegativeFilter = !hideNegativeFilter;
+        filterToggleBtn.classList.toggle('active', hideNegativeFilter);
+        filterToggleText.textContent = hideNegativeFilter ? 'Show All' : 'Hide Negative Avg X';
+        handleSearch(searchInput ? searchInput.value : '');
     }
-    
-    /**
-     * Applies the advanced filter to exclude negative values in 9th column
-     */
+
     function applyAdvancedFilter() {
-      if (!hideNegativeFilter) return;
-      if (filteredData.length === 0) return;
-      
-      const allHeaders = Object.keys(filteredData[0]);
-      
-      if (allHeaders.length < 9) {
-        console.warn("Data has fewer than 9 columns, skipping negative filter.");
-        return;
-      }
-      
-      const ninthColumnKey = allHeaders[8];
-      
-      filteredData = filteredData.filter(row => {
-        const numValue = parseValue(row[ninthColumnKey]);
-        return !(typeof numValue === 'number' && numValue < 0);
-      });
+        if (!hideNegativeFilter || filteredData.length === 0) return;
+        const headers = Object.keys(filteredData[0]);
+        if (headers.length < 9) return console.warn("Not enough columns for negative filter.");
+        const key = headers[8];
+        filteredData = filteredData.filter(row => {
+            const numValue = parseValue(row[key]);
+            return !(typeof numValue === 'number' && numValue < 0);
+        });
+    }
+
+      window.toggleSortByRank = function() {
+         if(!sortRankBtn || !sortRankText) return;
+        sortState = { key: null, direction: 'none' }; // Clear column sort
+        if (rankSortState === 'none') {
+            rankSortState = 'asc';
+            data.sort((a, b) => (a.compositeRank || Infinity) - (b.compositeRank || Infinity));
+            sortRankBtn.classList.add('active');
+            sortRankText.textContent = 'Rank ↑';
+        } else if (rankSortState === 'asc') {
+            rankSortState = 'desc';
+            data.sort((a, b) => (b.compositeRank || -Infinity) - (a.compositeRank || -Infinity));
+             sortRankBtn.classList.add('active'); // Keep active for desc
+            sortRankText.textContent = 'Rank ↓';
+        } else {
+            rankSortState = 'none';
+            data = [...originalData]; // Revert to original order
+             sortRankBtn.classList.remove('active');
+            sortRankText.textContent = 'Sort by Rank';
+        }
+        handleSearch(searchInput ? searchInput.value : ''); // Reapply filters/search
+    }
+
+      window.handleSort = function(key) {
+         if(!sortRankBtn || !sortRankText) return;
+        // Clear rank sort when column sort is used
+        rankSortState = 'none';
+        sortRankBtn.classList.remove('active');
+        sortRankText.textContent = 'Sort by Rank';
+
+        const currentKey = sortState.key;
+        const currentDirection = sortState.direction;
+        if (currentKey !== key) {
+            sortState = { key: key, direction: 'asc' };
+        } else if (currentDirection === 'asc') {
+            sortState.direction = 'desc';
+        } else {
+            sortState = { key: null, direction: 'none' }; // Cycle back to none
+        }
+
+        if (sortState.direction === 'none') {
+            data = [...originalData]; // Revert to original order
+        } else {
+            data.sort((a, b) => compareValues(a[key], b[key], sortState.direction));
+        }
+        handleSearch(searchInput ? searchInput.value : ''); // Reapply filters/search
     }
 
 
-    /**
-     * Handles pagination changes.
-     */
-    function changePage(delta) {
-      const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-      const newPage = currentPage + delta;
-      
-      if (newPage >= 1 && newPage <= totalPages) {
-        currentPage = newPage;
-        renderTable();
-      }
-    }
+     // --- Rendering ---
 
-
-    // --- Rendering Functions ---
-
-    /**
-     * Renders the rank badge HTML for 1st, 2nd, 3rd.
-     */
-    function renderRankBadge(rank) {
+     function renderRankBadge(rank) {
+        if (rank === 'N/A' || !rank) return `<span class="inline-block w-5 text-center text-secondary-text/60 text-xs">-</span>`;
         let bgColor = 'bg-secondary-text/20';
         let textColor = 'text-secondary-text';
         let rankText = `${rank}`;
-        
-        if (rank === 1) {
-            bgColor = 'bg-rank-gold/20';
-            textColor = 'text-rank-gold font-bold';
-            rankText = `1st`;
-        } else if (rank === 2) {
-            bgColor = 'bg-rank-silver/20';
-            textColor = 'text-rank-silver font-bold';
-            rankText = `2nd`;
-        } else if (rank === 3) {
-            bgColor = 'bg-rank-bronze/20';
-            textColor = 'text-rank-bronze font-bold';
-            rankText = `3rd`;
-        }
-        
-        if (rank > 3) {
-             return `<span class="inline-block w-5 text-center text-secondary-text/80 text-xs">${rank}</span>`;
-        }
-
+        if (rank === 1) { bgColor = 'bg-rank-gold/20'; textColor = 'text-rank-gold font-bold'; rankText = `1st`; }
+        else if (rank === 2) { bgColor = 'bg-rank-silver/20'; textColor = 'text-rank-silver font-bold'; rankText = `2nd`; }
+        else if (rank === 3) { bgColor = 'bg-rank-bronze/20'; textColor = 'text-rank-bronze font-bold'; rankText = `3rd`; }
+        if (rank > 3) return `<span class="inline-block w-5 text-center text-secondary-text/80 text-xs">${rank}</span>`;
         return `<span class="inline-block px-1.5 py-0.5 rounded-full text-xs ${bgColor} ${textColor}">${rankText}</span>`;
     }
 
-    /**
-     * Renders the sort indicator icon based on the current sort state.
-     */
     function renderSortIcon(key) {
         if (sortState.key === key) {
-            if (sortState.direction === 'asc') {
-                return `<svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z" transform="translate(0, 5)"/></svg>`; 
-            } else if (sortState.direction === 'desc') {
-                return `<svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" transform="translate(0, 5)"/></svg>`; 
-            }
+            if (sortState.direction === 'asc') return `<svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z" transform="translate(0, 5)"/></svg>`;
+            if (sortState.direction === 'desc') return `<svg class="w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" transform="translate(0, 5)"/></svg>`;
         }
-        return `<svg class="w-3 h-3 ml-1 opacity-20" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" transform="translate(0, 5)"/></svg>`;
+        // Simplified default icon
+        return `<svg class="w-3 h-3 ml-1 opacity-20 group-hover:opacity-50 transition-opacity" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" transform="translate(0, 5)"/></svg>`;
     }
 
-    /**
-     * Main function to render the leaderboard table and controls.
-     */
+
     function renderTable() {
-      const tableContainer = document.getElementById("table-container");
-      
-      if (filteredData.length === 0) {
-        if (document.getElementById('loading-spinner').style.display !== 'block') {
-             tableContainer.innerHTML = `<div class='text-xs p-4 text-secondary-text'>No data to display. Try a different search term or filter.</div>`;
+         if(!tableContainer) return;
+
+        const totalRows = filteredData.length;
+        if (totalRows === 0) {
+            if (loadingSpinner && loadingSpinner.style.display !== 'block') {
+                 tableContainer.innerHTML = `<div class='text-xs p-4 text-secondary-text'>No data found matching your criteria.</div>`;
+            }
+             updatePaginationUI();
+            return;
         }
-        document.getElementById("page-info").textContent = 'Page 0 of 0';
-        document.getElementById("prev-button").disabled = true;
-        document.getElementById("next-button").disabled = true;
-        return;
-      }
-      
-      const totalRows = filteredData.length;
-      const totalPages = Math.ceil(totalRows / itemsPerPage);
 
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = Math.min(startIndex + itemsPerPage, totalRows);
-      const rowsToShow = filteredData.slice(startIndex, endIndex);
+        const totalPages = Math.ceil(totalRows / itemsPerPage);
+        currentPage = Math.max(1, Math.min(currentPage, totalPages)); // Ensure currentPage is valid
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalRows);
+        const rowsToShow = filteredData.slice(startIndex, endIndex);
 
-      document.getElementById("page-info").textContent = `Page ${totalPages > 0 ? currentPage : 0} of ${totalPages}`;
-      document.getElementById("prev-button").disabled = currentPage === 1 || totalPages === 0;
-      document.getElementById("next-button").disabled = currentPage === totalPages || totalPages === 0;
+        updatePaginationUI(totalPages);
 
-      const allHeaders = Object.keys(rowsToShow[0]);
-      const firstKey = allHeaders[0]; 
-      const lastKey = allHeaders[allHeaders.length - 1];
-      const intermediateKeys = allHeaders.slice(1, -1); 
+        const allHeaders = Object.keys(rowsToShow[0]).filter(h => h !== 'compositeRank'); // Exclude rank from headers
+        const firstKey = allHeaders[0];
+        const lastKey = allHeaders[allHeaders.length - 1];
+        const intermediateKeys = allHeaders.slice(1, -1);
 
-      let html = `
-        <table class="min-w-full text-xs border-separate border-spacing-y-1">
-          <thead>
-            <tr class="text-secondary-text uppercase text-xs">
-              <th 
-                class="p-2 text-left font-normal sortable-header rounded-tl-lg" 
-                onclick="handleSort('${firstKey}')"
-              >
-                <div class="flex items-center">
-                    ${firstKey} / ${lastKey}
-                    ${renderSortIcon(firstKey)}
-                </div>
-              </th>
-              ${intermediateKeys.map(h => `
-                <th 
-                  class="p-2 text-left font-normal sortable-header"
-                  onclick="handleSort('${h}')"
-                >
-                  <div class="flex items-center">
-                      ${h}
-                      ${renderSortIcon(h)}
-                  </div>
-                </th>
-              `).join("")}
-              <th class="p-2 text-left font-normal rounded-tr-lg"></th> 
-            </tr>
-          </thead>
-          <tbody>
-      `;
+        let tableHTML = `<table class="min-w-full text-xs border-separate border-spacing-y-1"><thead><tr class="text-secondary-text uppercase text-xs">`;
 
-      rowsToShow.forEach((row) => {
-        const rank = row.compositeRank || 0; 
-        
-        html += `
-          <tr class="bg-card-bg hover:bg-border-subtle transition duration-150 rounded-lg shadow">
-            <td class="p-2 rounded-l-lg align-top">
-              <div class="flex items-start space-x-2">
-                ${renderRankBadge(rank)}
-                <div class="flex flex-col">
-                  <div class="font-semibold text-primary-text text-sm flex items-center whitespace-nowrap">
-                    ${shortenAddress(row[firstKey], 6)}
-                    <button 
-                      onclick="copyToClipboard(event, '${row[firstKey]}')" 
-                      class="copy-btn ml-1 p-0.5 text-secondary-text hover:text-positive-green transition duration-150 rounded-md"
-                      title="Copy Wallet Address"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1-1.1-2-2.3-2-2v-4c0-1.6 1.4-3 3-3h12l-2 2H5v4c0 1.1 0.9 2 2 2z"/></svg>
-                    </button>
-                    <svg class="w-3 h-3 ml-1 text-blue-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                  </div>
-                  <div class="text-xs text-secondary-text mt-0.5 whitespace-nowrap">
-                    <span class="text-yellow-400 mr-1">&#9830;</span> ${row[lastKey]}
-                  </div>
-                </div>
-              </div>
-            </td>
-            ${intermediateKeys.map(h => {
-                const value = String(row[h]);
-                let colorClass = 'text-primary-text'; 
-                const isFinancialMetric = value.includes('%') || value.includes('$');
-                if (isFinancialMetric) {
-                    const numValue = parseValue(value);
-                    if (typeof numValue === 'number') {
-                        if (numValue > 0) colorClass = 'positive';
-                        else if (numValue < 0) colorClass = 'negative';
+        // First combined header with group hover for icon visibility
+        tableHTML += `<th class="p-2 text-left font-normal sortable-header rounded-tl-lg group" onclick="handleSort('${firstKey}')"><div class="flex items-center">${firstKey} / ${lastKey}${renderSortIcon(firstKey)}</div></th>`;
+
+        // Intermediate headers with group hover
+        intermediateKeys.forEach(h => {
+             tableHTML += `<th class="p-2 text-left font-normal sortable-header group" onclick="handleSort('${h}')"><div class="flex items-center">${h}${renderSortIcon(h)}</div></th>`;
+        });
+
+        tableHTML += `<th class="p-2 text-left font-normal rounded-tr-lg"></th></tr></thead><tbody>`;
+
+        rowsToShow.forEach((row) => {
+            const rank = row.compositeRank;
+            tableHTML += `<tr class="bg-card-bg hover:bg-border-subtle transition duration-150 rounded-lg shadow">`;
+            // Rank, Address, Copy, Last Column Value
+            tableHTML += `<td class="p-2 rounded-l-lg align-top"><div class="flex items-start space-x-2">${renderRankBadge(rank)}<div class="flex flex-col">`;
+            tableHTML += `<div class="font-semibold text-primary-text text-sm flex items-center whitespace-nowrap">${shortenAddress(row[firstKey])}`;
+            // Use window.copyToClipboard for global access
+            tableHTML += `<button onclick='window.copyToClipboard(event, "${row[firstKey]}")' class="copy-btn ml-1 p-0.5 text-secondary-text hover:text-positive-green transition duration-150 rounded-md" title="Copy Address"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1-1.1-2-2.3-2-2v-4c0-1.6 1.4-3 3-3h12l-2 2H5v4c0 1.1 0.9 2 2 2z"/></svg></button>`;
+             tableHTML += `<svg class="w-3 h-3 ml-1 text-blue-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`;
+            tableHTML += `</div><div class="text-xs text-secondary-text mt-0.5 whitespace-nowrap"><span class="text-yellow-400 mr-1">&#9830;</span> ${row[lastKey] || 'N/A'}</div></div></div></td>`;
+
+            // Intermediate data cells
+            intermediateKeys.forEach(h => {
+                const value = String(row[h] || 'N/A');
+                let colorClass = 'text-primary-text';
+                const isFinancial = value.includes('%') || value.includes('$');
+                if (isFinancial) {
+                    const numVal = parseValue(value);
+                    if (typeof numVal === 'number') {
+                        if (numVal > 0) colorClass = 'positive';
+                        else if (numVal < 0) colorClass = 'negative';
                     }
                 }
-                return `
-                    <td class="p-2 align-top">
-                        <div class="data-value ${colorClass} text-sm">${value}</div>
-                    </td>
-                `;
-            }).join("")}
-            <td class="rounded-r-lg"></td>
-          </tr>
-        `;
-      });
-      html += `</tbody></table>`;
-      tableContainer.innerHTML = html;
-    }
-    
-    // --- Export Functions ---
-    
-    function toggleExportMenu() {
-      document.getElementById('export-menu').classList.toggle('hidden');
-    }
-    
-    function convertToCSV(data) {
-      if (!data || data.length === 0) return '';
-      const headers = Object.keys(data[0]);
-      const csvHeaders = ['Rank', ...headers].join(',');
-      const csvRows = data.map(row => {
-        const rank = row.compositeRank || '';
-        const values = headers.map(header => {
-          let value = String(row[header] || '').replace(/"/g, '""');
-          if (/[",\n]/.test(value)) {
-            value = `"${value}"`;
-          }
-          return value;
-        });
-        return [rank, ...values].join(',');
-      });
-      return [csvHeaders, ...csvRows].join('\n');
-    }
-    
-    function exportToCSV() {
-      document.getElementById('export-menu').classList.add('hidden');
-      if (filteredData.length === 0) return alert('No data to export!');
-      
-      const csv = convertToCSV(filteredData);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `alpha_data_${activeTableKey}_${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showExportSuccess('CSV');
-    }
-    
-    function exportToExcel() {
-        document.getElementById('export-menu').classList.add('hidden');
-        if (filteredData.length === 0) return alert('No data to export!');
+                 tableHTML += `<td class="p-2 align-top"><div class="data-value ${colorClass} text-sm">${value}</div></td>`;
+            });
 
+            tableHTML += `<td class="rounded-r-lg"></td></tr>`; // Spacer cell
+        });
+
+        tableHTML += `</tbody></table>`;
+        tableContainer.innerHTML = tableHTML;
+
+         // Re-render sort icons on table headers after redraw
+         renderAllSortIcons();
+    }
+
+     function renderAllSortIcons() {
+         const headers = document.querySelectorAll('.sortable-header');
+         headers.forEach(th => {
+             // Extract key reliably, handling potential quotes
+             const onclickAttr = th.getAttribute('onclick');
+             const keyMatch = onclickAttr ? onclickAttr.match(/handleSort\(['"]([^'"]+)['"]\)/) : null;
+             const key = keyMatch ? keyMatch[1] : null;
+
+             if (key) {
+                 const iconContainer = th.querySelector('div');
+                 if(iconContainer) {
+                    // Remove old icon first
+                    const oldIcon = iconContainer.querySelector('svg');
+                    if(oldIcon) oldIcon.remove();
+                    // Add new icon HTML
+                    iconContainer.insertAdjacentHTML('beforeend', renderSortIcon(key));
+                 }
+             }
+         });
+     }
+
+
+     // --- Pagination ---
+
+      function updatePaginationUI(totalPages = 0) {
+         if(!pageInfoEl || !prevBtn || !nextBtn) return;
+        pageInfoEl.textContent = `Page ${totalPages > 0 ? currentPage : 0} of ${totalPages}`;
+        prevBtn.disabled = currentPage <= 1 || totalPages === 0;
+        nextBtn.disabled = currentPage >= totalPages || totalPages === 0;
+    }
+
+     window.changePage = function(delta) {
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            renderTable();
+        }
+    }
+
+     // --- Export ---
+     window.toggleExportMenu = function() {
+        const menu = document.getElementById('export-menu');
+        if(menu) menu.classList.toggle('hidden');
+    }
+
+     function convertToCSV(dataToExport) {
+        if (!dataToExport || dataToExport.length === 0) return '';
+        const headers = Object.keys(dataToExport[0]); // Include compositeRank if present
+        const csvHeaders = headers.join(',');
+        const csvRows = dataToExport.map(row => {
+            return headers.map(header => {
+            let value = String(row[header] === undefined || row[header] === null ? '' : row[header]);
+            value = value.replace(/"/g, '""'); // Escape double quotes
+            if (/[",\n]/.test(value)) { value = `"${value}"`; } // Quote if contains comma, newline, or quote
+            return value;
+            }).join(',');
+        });
+        return [csvHeaders, ...csvRows].join('\n');
+    }
+
+     window.exportToCSV = function() {
+        if (filteredData.length === 0) return alert('No data to export!');
+        toggleExportMenu(); // Hide menu
+        const csv = convertToCSV(filteredData);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `alpha_data_${activeTableKey}_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showExportSuccess('CSV');
+    }
+
+     window.exportToExcel = function() {
+        if (filteredData.length === 0) return alert('No data to export!');
+        toggleExportMenu(); // Hide menu
         const headers = Object.keys(filteredData[0]);
-        let tableHtml = '<table><tr><th>Rank</th>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+        let tableHtml = '<table><tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
         tableHtml += filteredData.map(row => {
-            let rowHtml = `<tr><td>${row.compositeRank || ''}</td>`;
-            rowHtml += headers.map(h => `<td>${row[h] || ''}</td>`).join('');
-            return rowHtml + '</tr>';
+            return '<tr>' + headers.map(h => `<td>${row[h] === undefined || row[h] === null ? '' : row[h]}</td>`).join('') + '</tr>';
         }).join('');
         tableHtml += '</table>';
-        
-        const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sheet1</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>${tableHtml}</body></html>`;
-
+        const template = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>${tableHtml}</body></html>`;
         const blob = new Blob([template], { type: 'application/vnd.ms-excel' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -1055,55 +956,49 @@
         document.body.removeChild(link);
         showExportSuccess('Excel');
     }
-    
-    function exportWalletsOnly() {
-      document.getElementById('export-menu').classList.add('hidden');
-      if (filteredData.length === 0) return alert('No data to export!');
-      
-      const firstKey = Object.keys(filteredData[0])[0];
-      const wallets = filteredData.map(row => row[firstKey]).join('\n');
-      
-      const blob = new Blob([wallets], { type: 'text/plain;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `addresses_${activeTableKey}_${new Date().toISOString().slice(0, 10)}.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showExportSuccess('TXT (Addresses Only)');
-    }
-    
-    function showExportSuccess(format) {
-      const existingMessage = document.getElementById('export-success-message');
-      if (existingMessage) existingMessage.remove();
-      
-      const message = document.createElement('div');
-      message.id = 'export-success-message';
-      message.className = 'fixed top-4 right-4 bg-positive-green text-dark-bg px-4 py-2 rounded-md shadow-lg z-50 flex items-center gap-2 animate-fade-in';
-      message.innerHTML = `
-        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-        </svg>
-        <span class="font-semibold">Exported as ${format}!</span>
-      `;
-      document.body.appendChild(message);
-      
-      setTimeout(() => {
-        message.style.transition = 'opacity 0.3s';
-        message.style.opacity = '0';
-        setTimeout(() => message.remove(), 300);
-      }, 3000);
-    }
-    // Close export menu when clicking outside
-    document.addEventListener('click', function(event) {
-      const exportBtn = document.getElementById('export-btn');
-      const exportMenu = document.getElementById('export-menu');
-      if (exportBtn && exportMenu && !exportBtn.contains(event.target) && !exportMenu.contains(event.target)) {
-        exportMenu.classList.add('hidden');
-      }
-    });
 
-  </script>
+     window.exportWalletsOnly = function() {
+        if (filteredData.length === 0) return alert('No data to export!');
+        toggleExportMenu(); // Hide menu
+        // Ensure first key exists before trying to access it
+        if(filteredData[0]) {
+            const firstKey = Object.keys(filteredData[0])[0];
+            if(firstKey) {
+                const addresses = filteredData.map(row => row[firstKey]).join('\n');
+                const blob = new Blob([addresses], { type: 'text/plain;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `addresses_${activeTableKey}_${new Date().toISOString().slice(0, 10)}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showExportSuccess('TXT (Addresses Only)');
+            } else {
+                 alert("Could not determine the address column for export.");
+            }
+        } else {
+             alert("Cannot export addresses from empty data.");
+        }
+    }
+
+     function showExportSuccess(format) {
+        const existingMessage = document.getElementById('export-success-message');
+        if (existingMessage) existingMessage.remove();
+        const message = document.createElement('div');
+        message.id = 'export-success-message';
+        message.className = 'fixed top-4 right-4 bg-positive-green text-dark-bg px-4 py-2 rounded-md shadow-lg z-50 flex items-center gap-2 animate-fade-in';
+        message.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span class="font-semibold">Exported as ${format}!</span>`;
+        document.body.appendChild(message);
+        setTimeout(() => {
+            if (message) {
+                 message.style.transition = 'opacity 0.3s';
+                 message.style.opacity = '0';
+                 setTimeout(() => message.remove(), 300);
+            }
+        }, 3000);
+    }
+
+   </script>
 </body>
 </html>
 
