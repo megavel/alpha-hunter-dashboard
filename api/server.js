@@ -224,7 +224,7 @@ app.post('/api/create-payment', async (req, res) => {
         return res.status(500).json({ error: 'Payment system not configured' });
     }
     
-    const paymentAmount = parseFloat(process.env.MONTHLY_PRICE || 10);
+    const paymentAmount = parseFloat(process.env.MONTHLY_PRICE || 50);
     const paymentCurrency = process.env.PAYMENT_CURRENCY || 'usd';
     
     try {
