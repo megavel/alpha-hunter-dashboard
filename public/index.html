@@ -8,6 +8,13 @@
 
   <!-- No external script tag needed here, loaded via module -->
 
+  <!-- Vercel Analytics Injection (Place AFTER Guard) -->
+  <script>
+    window.va = window.va || function () { (window.va.q = window.va.q || []).push(arguments); };
+  </script>
+  <script src="/_vercel/insights/script.js"></script>
+  <!-- End Vercel Analytics -->
+
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; }

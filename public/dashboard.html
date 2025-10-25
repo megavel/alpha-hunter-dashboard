@@ -56,6 +56,13 @@
   </script>
   <!-- END GUARD -->
 
+  <!-- Vercel Analytics Injection (Place AFTER Guard) -->
+  <script>
+    window.va = window.va || function () { (window.va.q = window.va.q || []).push(arguments); };
+  </script>
+  <script src="/_vercel/insights/script.js"></script>
+  <!-- End Vercel Analytics -->
+   
   <title>Alpha Hunter - Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
